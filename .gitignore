@@ -1,1 +1,9 @@
-﻿/.idea
+﻿.idea
+*.sln
+*.sln.DotSettings.user
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+*.exe
+examples/*/binaries
+examples/*/intermediate
