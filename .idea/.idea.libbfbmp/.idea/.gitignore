@@ -1,6 +1,0 @@
-﻿.idea/
-*vcxproj
-*vcxproj.filters
-*vcxproj.user
-examples/*/binaries
-examples/*/intermediate
