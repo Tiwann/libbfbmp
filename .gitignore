@@ -5,5 +5,5 @@
 *.vcxproj.user
 *.vcxproj.filters
 *.exe
-examples/*/binaries
-examples/*/intermediate
+**/binaries
+**/intermediate
