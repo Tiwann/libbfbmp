@@ -96,7 +96,11 @@
 #define BFBMP_VERSION ((BFBMP_VERSION_PATCH << 24 & 0xFF000000) | (BFBMP_VERSION_MINOR << 16 & 0xFF0000) | (BFBMP_VERSION_MAJOR << 8 & 0xFF00) | BFBMP_VERSION_BIGGER & 0xFF)
 #endif
 
+#if defined(__cplusplus)
+#define BFBMP_API       extern "C"
+#else
 #define BFBMP_API       extern
+#endif
 #define BFBMP_PRIVATE   static
 #define BFBMP_INLINE    inline
 
@@ -126,9 +130,15 @@ typedef double		    bfbmp_float64;
 typedef void* 		    bfbmp_address;
 typedef FILE*           bfbmp_file;
 
-
+// Callbaks
 typedef void(*bfbmp_read_callback)(bfbmp_char* buffer, bfbmp_size size);
 typedef void(*bfbmp_write_callback)(const bfbmp_char* filepath, bfbmp_size size);
+
+typedef struct
+{
+    bfbmp_char* data;
+    bfbmp_size  size;
+} bfbmp_string;
 
 typedef enum
 {
@@ -147,10 +157,10 @@ typedef enum
 
 typedef struct
 {
-    bfbmp_char*  song_name;
-    bfbmp_char*  sub_name;
-    bfbmp_char*  author_name;
-    bfbmp_char*  mapper_name;
+    bfbmp_string  song_name;
+    bfbmp_string  sub_name;
+    bfbmp_string  author_name;
+    bfbmp_string  mapper_name;
     bfbmp_int32  beats_per_minute;
     bfbmp_int32  beats_per_measure;
     bfbmp_float  start_offset;
@@ -178,6 +188,8 @@ typedef struct
     bfbmp_data          cover;
     bfbmp_data          audio;
 } bfbmp;
+
+
 
 // Version 0.4, not yet implemented
 typedef enum
@@ -243,26 +255,33 @@ const bfbmp_char* img_path,
 const bfbmp_char* snd_path
 )
 {
+    const bfbmp_uint32 version = bfbmp_get_version();
+    bfbmp_size str_size = 0;
+    
     bfbmp* pbfbmp = BFBMP_MALLOC(sizeof(bfbmp));
     BFBMP_MEMSET(pbfbmp, 0, sizeof(bfbmp));
-    const bfbmp_uint32 version = bfbmp_get_version();
     BFBMP_MEMCPY(&pbfbmp->version, &version, sizeof(bfbmp_version));
 
-    pbfbmp->metadata.song_name = BFBMP_MALLOC(strlen(song_name) + 1);
-    BFBMP_MEMCPY(pbfbmp->metadata.song_name, song_name, strlen(song_name));
-    pbfbmp->metadata.song_name[strlen(song_name)] = BFBMP_NULL_CHARACTER;
+
+    str_size = strlen(song_name) + 1;
+    pbfbmp->metadata.song_name.data = BFBMP_MALLOC(str_size);
+    BFBMP_MEMCPY(pbfbmp->metadata.song_name.data, song_name, str_size);
+    pbfbmp->metadata.song_name.data[str_size] = BFBMP_NULL_CHARACTER;
     
-    pbfbmp->metadata.sub_name = BFBMP_MALLOC(strlen(sub_name) + 1);
-    BFBMP_MEMCPY(pbfbmp->metadata.sub_name, sub_name, strlen(sub_name));
-    pbfbmp->metadata.sub_name[strlen(sub_name)] = BFBMP_NULL_CHARACTER;
+    str_size = strlen(sub_name) + 1;
+    pbfbmp->metadata.sub_name.data = BFBMP_MALLOC(str_size);
+    BFBMP_MEMCPY(pbfbmp->metadata.sub_name.data, sub_name, str_size);
+    pbfbmp->metadata.sub_name.data[str_size] = BFBMP_NULL_CHARACTER;
 
-    pbfbmp->metadata.author_name = BFBMP_MALLOC(strlen(author_name) + 1);
-    BFBMP_MEMCPY(pbfbmp->metadata.author_name, author_name, strlen(author_name));
-    pbfbmp->metadata.author_name[strlen(author_name)] = BFBMP_NULL_CHARACTER;
+    str_size = strlen(author_name) + 1;
+    pbfbmp->metadata.author_name.data = BFBMP_MALLOC(str_size);
+    BFBMP_MEMCPY(pbfbmp->metadata.author_name.data, author_name, str_size);
+    pbfbmp->metadata.author_name.data[str_size] = BFBMP_NULL_CHARACTER;
 
-    pbfbmp->metadata.mapper_name = BFBMP_MALLOC(strlen(mapper_name) + 1);
-    BFBMP_MEMCPY(pbfbmp->metadata.mapper_name, mapper_name, strlen(mapper_name));
-    pbfbmp->metadata.mapper_name[strlen(mapper_name)] = BFBMP_NULL_CHARACTER;
+    str_size = strlen(mapper_name) + 1;
+    pbfbmp->metadata.mapper_name.data = BFBMP_MALLOC(str_size);
+    BFBMP_MEMCPY(pbfbmp->metadata.mapper_name.data, mapper_name, str_size);
+    pbfbmp->metadata.mapper_name.data[str_size] = BFBMP_NULL_CHARACTER;
     
     pbfbmp->metadata.beats_per_minute = bpm;
     pbfbmp->metadata.start_offset = start_off;
@@ -275,10 +294,10 @@ const bfbmp_char* snd_path
 
 BFBMP_API void bfbmp_free(bfbmp* pbfbmp)
 {
-    BFBMP_FREE(pbfbmp->metadata.song_name);
-    BFBMP_FREE(pbfbmp->metadata.sub_name);
-    BFBMP_FREE(pbfbmp->metadata.author_name);
-    BFBMP_FREE(pbfbmp->metadata.mapper_name);
+    BFBMP_FREE(pbfbmp->metadata.song_name.data);
+    BFBMP_FREE(pbfbmp->metadata.sub_name.data);
+    BFBMP_FREE(pbfbmp->metadata.author_name.data);
+    BFBMP_FREE(pbfbmp->metadata.mapper_name.data);
     BFBMP_FREE(pbfbmp->cover.data);
     BFBMP_FREE(pbfbmp->audio.data);
     BFBMP_FREE(pbfbmp);
@@ -341,38 +360,37 @@ BFBMP_API bfbmp_result bfbmp_read_memory(bfbmp_uint8* buffer, bfbmp_size size, b
     buffer += 4;
     
     bfbmp_size length = 0;
-    bfbmp_char* string = NULL;
     
     bfbmp__read(&length, buffer, 4);
     buffer += 4;
-    string = BFBMP_MALLOC(length);
-    bfbmp__read(string, buffer, length);
-    string[length] = BFBMP_NULL_CHARACTER;
-    pbfbmp->metadata.song_name = string;
+    pbfbmp->metadata.song_name.data = BFBMP_MALLOC(length);
+    pbfbmp->metadata.song_name.size = length;
+    bfbmp__read(pbfbmp->metadata.song_name.data, buffer, length);
+    pbfbmp->metadata.song_name.data[length] = BFBMP_NULL_CHARACTER;
     buffer += length;
 
     bfbmp__read(&length, buffer, 4);
     buffer += 4;
-    string = BFBMP_MALLOC(length);
-    bfbmp__read(string, buffer, length);
-    string[length] = BFBMP_NULL_CHARACTER;
-    pbfbmp->metadata.sub_name = string;
+    pbfbmp->metadata.sub_name.data = BFBMP_MALLOC(length);
+    pbfbmp->metadata.sub_name.size = length;
+    bfbmp__read(pbfbmp->metadata.sub_name.data, buffer, length);
+    pbfbmp->metadata.sub_name.data[length] = BFBMP_NULL_CHARACTER;
     buffer += length;
 
     bfbmp__read(&length, buffer, 4);
     buffer += 4;
-    string = BFBMP_MALLOC(length);
-    bfbmp__read(string, buffer, length);
-    string[length] = BFBMP_NULL_CHARACTER;
-    pbfbmp->metadata.author_name = string;
+    pbfbmp->metadata.author_name.data = BFBMP_MALLOC(length);
+    pbfbmp->metadata.author_name.size = length;
+    bfbmp__read(pbfbmp->metadata.author_name.data, buffer, length);
+    pbfbmp->metadata.author_name.data[length] = BFBMP_NULL_CHARACTER;
     buffer += length;
 
     bfbmp__read(&length, buffer, 4);
     buffer += 4;
-    string = BFBMP_MALLOC(length);
-    bfbmp__read(string, buffer, length);
-    string[length] = BFBMP_NULL_CHARACTER;
-    pbfbmp->metadata.mapper_name = string;
+    pbfbmp->metadata.mapper_name.data = BFBMP_MALLOC(length);
+    pbfbmp->metadata.mapper_name.size = length;
+    bfbmp__read(pbfbmp->metadata.mapper_name.data, buffer, length);
+    pbfbmp->metadata.mapper_name.data[length] = BFBMP_NULL_CHARACTER;
     buffer += length;
     
     bfbmp__read(&pbfbmp->metadata.beats_per_minute, buffer, 4);
@@ -433,38 +451,37 @@ BFBMP_API bfbmp_result bfbmp_read_metadata_memory(bfbmp_uint8* buffer, bfbmp_siz
     buffer += 4;
     
     bfbmp_size length = 0;
-    bfbmp_char* string = NULL;
     
     bfbmp__read(&length, buffer, 4);
     buffer += 4;
-    string = BFBMP_MALLOC(length);
-    bfbmp__read(string, buffer, length);
-    string[length] = BFBMP_NULL_CHARACTER;
-    metadata->song_name = string;
+    metadata->song_name.data = BFBMP_MALLOC(length);
+    metadata->song_name.size = length;
+    bfbmp__read(metadata->song_name.data, buffer, length);
+    metadata->song_name.data[length] = BFBMP_NULL_CHARACTER;
     buffer += length;
 
     bfbmp__read(&length, buffer, 4);
     buffer += 4;
-    string = BFBMP_MALLOC(length);
-    bfbmp__read(string, buffer, length);
-    string[length] = BFBMP_NULL_CHARACTER;
-    metadata->sub_name = string;
+    metadata->sub_name.data = BFBMP_MALLOC(length);
+    metadata->sub_name.size = length;
+    bfbmp__read(metadata->sub_name.data, buffer, length);
+    metadata->sub_name.data[length] = BFBMP_NULL_CHARACTER;
     buffer += length;
 
     bfbmp__read(&length, buffer, 4);
     buffer += 4;
-    string = BFBMP_MALLOC(length);
-    bfbmp__read(string, buffer, length);
-    string[length] = BFBMP_NULL_CHARACTER;
-    metadata->author_name = string;
+    metadata->author_name.data = BFBMP_MALLOC(length);
+    metadata->author_name.size = length;
+    bfbmp__read(metadata->author_name.data, buffer, length);
+    metadata->author_name.data[length] = BFBMP_NULL_CHARACTER;
     buffer += length;
 
     bfbmp__read(&length, buffer, 4);
     buffer += 4;
-    string = BFBMP_MALLOC(length);
-    bfbmp__read(string, buffer, length);
-    string[length] = BFBMP_NULL_CHARACTER;
-    metadata->mapper_name = string;
+    metadata->mapper_name.data = BFBMP_MALLOC(length);
+    metadata->mapper_name.size = length;
+    bfbmp__read(metadata->mapper_name.data, buffer, length);
+    metadata->mapper_name.data[length] = BFBMP_NULL_CHARACTER;
     buffer += length;
     
     bfbmp__read(&metadata->beats_per_minute, buffer, 4);
@@ -495,21 +512,21 @@ BFBMP_API bfbmp_result bfbmp_write_file(const bfbmp_char* filepath, bfbmp* pbfbm
     fwrite("META", 4, 1, file);
     fwrite("____", 4, 1, file);
     const bfbmp_int32 meta_begin = ftell(file);
-    size = strlen(pbfbmp->metadata.song_name);
+    size = strlen(pbfbmp->metadata.song_name.data);
     fwrite(&size, 4, 1, file);
-    fwrite(pbfbmp->metadata.song_name, size, 1, file);
+    fwrite(pbfbmp->metadata.song_name.data, size, 1, file);
     
-    size = strlen(pbfbmp->metadata.sub_name);
+    size = strlen(pbfbmp->metadata.sub_name.data);
     fwrite(&size, 4, 1, file);
-    fwrite(pbfbmp->metadata.sub_name, size, 1, file);
+    fwrite(pbfbmp->metadata.sub_name.data, size, 1, file);
 
-    size = strlen(pbfbmp->metadata.author_name);
+    size = strlen(pbfbmp->metadata.author_name.data);
     fwrite(&size, 4, 1, file);
-    fwrite(pbfbmp->metadata.author_name, size, 1, file);
+    fwrite(pbfbmp->metadata.author_name.data, size, 1, file);
 
-    size = strlen(pbfbmp->metadata.mapper_name);
+    size = strlen(pbfbmp->metadata.mapper_name.data);
     fwrite(&size, 4, 1, file);
-    fwrite(pbfbmp->metadata.mapper_name, size, 1, file);
+    fwrite(pbfbmp->metadata.mapper_name.data, size, 1, file);
 
     fwrite(&pbfbmp->metadata.beats_per_minute, 4, 1, file);
     fwrite(&pbfbmp->metadata.start_offset, 4, 1, file);
@@ -524,13 +541,13 @@ BFBMP_API bfbmp_result bfbmp_write_file(const bfbmp_char* filepath, bfbmp* pbfbm
     fwrite(pbfbmp->audio.data, pbfbmp->audio.size, 1, file);
     const bfbmp_int32 file_end = ftell(file);
 
-    fseek(file, meta_begin - 4, SEEK_SET);
-    const bfbmp_int32 meta_size = meta_end - meta_begin;
-    fwrite(&meta_size, 4, 1, file);
+    //fseek(file, meta_begin - 4, SEEK_SET);
+    //const bfbmp_int32 meta_size = meta_end - meta_begin;
+    //fwrite(&meta_size, 4, 1, file);
 
-    fseek(file, file_begin - 4, SEEK_SET);
-    const bfbmp_int32 file_size = file_end - file_begin;
-    fwrite(&file_size, 4, 1, file);
+    //fseek(file, file_begin - 4, SEEK_SET);
+    //const bfbmp_int32 file_size = file_end - file_begin;
+    //fwrite(&file_size, 4, 1, file);
 
     fclose(file);
     return bfbmp_success;
