@@ -90,6 +90,38 @@ Defining ```BFBMP_USE_ASSERT``` enbales assertions.
 # Upcoming apis
 Currently working on some apis for reading audio data or/and image data only.
 
+# Demo Examples
+This repo includes some example projects that you can build and run.
+First, makes sure you have git installed then go to a desired directory and run
+```sh
+git clone https://github.com/Tiwann/libbfbmp.git
+```
+or if you have ssh setup
+```sh
+git clone git@github.com:Tiwann/libbfbmp.git
+```
+
+The go to the directory where your cloned the repo
+```sh
+cd libbfbmp
+```
+
+If using Visual Studio you can build a solution by running ```build.bat``` or
+```cmd
+C:\libbfbmp> .\premake\premake5 v2022
+```
+
+If not using Visual Studio you can generate a makefile with
+```sh
+$ ./premake/premake5 gmake2
+```
+ Then build using
+ ```sh
+$ make config=debug
+```
+
+Binaries are located into ```examples/xxx/binaries```
+
 
 
 [bfbmphlnk]:<https://github.com/Tiwann/libbfbmp/blob/master/include/bfbmp.h>
