@@ -45,3 +45,51 @@ The type _**string**_ refers to the following structure
 | char[4]     | 4               | SND chunk ID *"!SND"*  |
 | int32       | 4               | Chunk data size        |
 | char[size]  | size            | Data                   |
+----------------------------------------------------------
+# How to use
+As said above, libbfbmp is a single header library. It is written in C for maximum compatibility. To use it simply download **[bfbmp.h][bfbmphlnk]** and place it into your C/C++ project.
+Then in a c/cpp file:
+```c
+#define BFBMP_IMPLEMENTATION
+#include "bfbmp.h"
+// Use APIs here
+```
+
+## Reading
+If you want to read bfbmp data you have to use  ```bfbmp_read_xxx()``` apis:
+```c
+bfbmp* m_bfbmp = bfbmp_init();
+bfbmp_read_file("Filepath", m_bfbmp);
+or
+bfbmp_read_memory(buffer, buffer_size, m_bfbmp);
+```
+Note that you can use ```bfbmp_read_metadata_xxx()``` to read metadata chunk only.
+
+## Writing
+If you want to write bfbmp data to file you have to use  ```bfbmp_write_file()``` api:
+```c
+bfbmp* m_bfbmp = bfbmp_init_data(params);
+bfbmp_write_file("filepath", m_bfbmp);
+```
+
+# Options
+You can define ```BFBMP_MALLOC```, ```BFBMP_REALLOC```, ```BFBMP_FREE```, ```BFBMP_MEMSET```, ```BFBMP_MEMCPY``` if you want to use custom memory allocation functions.
+Example using Unreal Engine:
+```cpp
+#define BFBMP_MALLOC(size)          FMemory::Malloc(size)
+#define BFBMP_REALLOCC(ptr, size)   FMemory::Malloc(ptr, size)
+#define BFBMP_FREE(ptr)             FMemory::Free(ptr)
+#define BFBMP_IMPLEMENTATION
+#include "bfbmp.h"
+// libbfbmp now uses Unreal Engine's memory allocation functions
+```
+
+Defining ```BFBMP_NO_STDIO``` disables ```bfbmp_xxx_file()``` apis.
+Defining ```BFBMP_USE_ASSERT``` enbales assertions.
+
+# Upcoming apis
+Currently working on some apis for reading audio data or/and image data only.
+
+
+
+[bfbmphlnk]:<https://github.com/Tiwann/libbfbmp/blob/master/include/bfbmp.h>
