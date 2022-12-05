@@ -4,6 +4,7 @@ libbfbmp is a C/C++ single header library that provides APIs for reading and wri
 # BFBMP File Format
 You can found below the file format specifications, so it is possible to write its own program that read/write bfbmp files.
 Feel free to send a message at _erwann.messoah@gmail.com_ for questions or suggestions.
+*NB: I'm currently making heavy changes on the file format structure. Make sure to update frequenlty...*
 
 ### Header
 |   Type   |  Size (Bytes)  |                   Description                     |
@@ -92,18 +93,11 @@ Currently working on some apis for reading audio data or/and image data only.
 
 # Demo Examples
 This repo includes some example projects that you can build and run.
-First, makes sure you have git installed then go to a desired directory and run
+First, makes sure you have git installed then clone this repositoty
 ```sh
 git clone https://github.com/Tiwann/libbfbmp.git
-```
 or if you have ssh setup
-```sh
 git clone git@github.com:Tiwann/libbfbmp.git
-```
-
-The go to the directory where your cloned the repo
-```sh
-cd libbfbmp
 ```
 
 If using Visual Studio you can build a solution by running ```build.bat``` or
