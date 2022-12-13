@@ -1,556 +1,469 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//  (C) Erwann Messoah 2022
-//  Binary Format Beatmap reader/writer
-//  C++ Header only library
-//  Version 0.3
-//
-//  BUILD OPTIONS
-//  You can #define BFBMP_MALLOC | BFBMP_REALLOC | BFBMP_FREE | BFBMP_MEMSET
-//  if you want to use your custom memory allocation functions.
-//
-//  You can #define BFBMP_NO_FILE if you want to disable all file io functions
-//  -> bfbmp_read_all_file(), bfbmp_read_metadata_file(), bfbmp_read_audio_file(), bfbmp_read_img_file()
-//
-//
-//  USAGE
-//  (inside a c/cpp file)
-//  #define BFBMP_IMPLEMENTATION
-//  #include "bfbmp.h"
-//
-//  For reading bfbmp file.
-//  bfbmp* p_bfbmp = bfbmp_init();
-//  bfbmp_read_file(filepath, p_bfbmp) or bfbmp_read_memory(buffer, p_bfbmp)
-//
-//  For writing bfbmp file.
-//  bfbmp* p_bfbmp = bfbmp_init_data(params);
-//  bfbmp_write_file(filename, p_bfbmp);
-//
-//  Don't remember to free up the bfbmp object when you no longer need it.
-//  bfbmp_free(p_bfbmp);
-//
-// +────────────────────────────────+───────────────+───────────────────────────────────────────────────+
-// | Binary Format Beatmap (bfbmp)  |               |                                                   |
-// +────────────────────────────────+───────────────+───────────────────────────────────────────────────+
-// | HEADER                         |               |                                                   |
-// | Type                           | Size (Bytes)  | Description                                       |
-// | char[4]                        | 4             | File ID "FBMP"                                    |
-// | int32                          | 4             | File format version, moslty '0'                   |
-// | int32                          | 4             | Total file size, should be 12  + meta chunk size  |
-// |                                |               |                                                   |
-// | META CHUNK                     |               |                                                   |
-// | Type                           | Size (Bytes)  | Description                                       |
-// | char[4]                        | 4             | Meta chunk ID "meta"                              |
-// | int32                          | 4             | Meta chunk size                                   |
-// | int32                          | 4             | Song name length                                  |
-// | string                         | length        | Song name                                         |
-// | int32                          | 4             | Sub name length                                   |
-// | string                         | length        | Sub name                                          |
-// | int32                          | 4             | Author name length                                |
-// | string                         | length        | Author name                                       |
-// | int32                          | 4             | Mapper name length                                |
-// | string                         | length        | Mapper name                                       |
-// | int32                          | 4             | Song BPM                                          |
-// | float                          | 4             | Start Offset                                      |
-// | int32                          | 4             | Beats per measure                                 |
-// |                                |               |                                                   |
-// | IMG CHUNK                      |               |                                                   |
-// | Type                           | Size (Bytes)  | Description                                       |
-// | char[4]                        | 4             | IMG chunk ID "!img"                               |
-// | int32                          | 4             | IMG data size                                     |
-// | char[size]                     | size          | IMG data                                          |
-// |                                |               |                                                   |
-// | SND CHUNK                      |               |                                                   |
-// | Type                           | Size (Bytes)  | Description                                       |
-// | char[4]                        | 4             | "SND chunk ID "!snd"                              |
-// | int32                          | 4             | SND data size                                     |
-// | char[size]                     | size          | SND data                                          |
-// +────────────────────────────────+───────────────+───────────────────────────────────────────────────+
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef BFBMP_HEADER
+﻿#ifndef BFBMP_HEADER
 #define BFBMP_HEADER
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
+#define BFBMP_VERSION_MAJOR 0
+#define BFBMP_VERSION_MINOR 4
 
-#if !defined(BFBMP_NO_STDIO)
-#include <stdio.h>
-#endif
 
-#if !defined(BFBMP_MALLOC) || !defined(BFBMP_REALLOC) || !defined(BFBMP_FREE)
-#define BFBMP_MALLOC(size)              malloc(size)
-#define BFBMP_REALLOC(ptr, new_size)    realloc(ptr, new_size)
-#define BFBMP_FREE(ptr)                 free(ptr)
-#define BFBMP_MEMSET(ptr, value, size)  memset(ptr, value, size)
-#define BFBMP_MEMCPY(dst, src, size)    memcpy(dst, src, size)
-#endif
-
-#define BFBMP_VERSION_BIGGER    0
-#define BFBMP_VERSION_MAJOR     0
-#define BFBMP_VERSION_MINOR     3
-#define BFBMP_VERSION_PATCH     0
-#if defined(BFBMP_ENCODE_BIG_ENDIAN)
-#define BFBMP_VERSION ((BFBMP_VERSION_BIGGER << 24 & 0xFF000000) | (BFBMP_VERSION_MAJOR << 16 & 0xFF0000) | (BFBMP_VERSION_MINOR << 8 & 0xFF00) | BFBMP_VERSION_PATCH & 0xFF)
+#if defined(BFBMP_BUILD_DLL)
+#if defined(_MSC_VER)
+#define BFBMP_DLL_EXPORT _declspec(dllexport)
+#define BFBMP_DLL_IMPORT _declspec(dllimport)
+#elif defined(__GNUC__) && __GNUC__ >= 4
+#define BFBMP_DLL_EXPORT __attribute__ ((visibility ("default")))
+#define BFBMP_DLL_IMPORT __attribute__ ((visibility ("default")))
 #else
-#define BFBMP_VERSION ((BFBMP_VERSION_PATCH << 24 & 0xFF000000) | (BFBMP_VERSION_MINOR << 16 & 0xFF0000) | (BFBMP_VERSION_MAJOR << 8 & 0xFF00) | BFBMP_VERSION_BIGGER & 0xFF)
+#define BFBMP_DLL_EXPORT
+#define BFBMP_DLL_IMPORT
 #endif
 
-#if defined(__cplusplus)
-#define BFBMP_API       extern "C"
+#if defined(BFBMP_EXPORT)
+#define BFBMP_API BFBMP_DLL_EXPORT
 #else
-#define BFBMP_API       extern
+#define BFBMP_API BFBMP_DLL_IMPORT
 #endif
-#define BFBMP_PRIVATE   static
-#define BFBMP_INLINE    inline
-
-#define BFBMP_TRUE 		1
-#define BFBMP_FALSE 	0
-#define BFBMP_NULL_CHARACTER '\0'
-
-#if defined(BFBMP_USE_ASSERT)
-#include <assert.h>
-#define BFBMP_ASSERT(condition, message) assert((condition) && (message))
+#else
+#define BFBMP_API extern
 #endif
 
-#define BFBMP_CHECK(condition, result) if(!(condition)) return result
 
 
-typedef char		    bfbmp_char;
-typedef uint8_t 	    bfbmp_bool;
-typedef int8_t 		    bfbmp_int8;
-typedef int16_t 	    bfbmp_int16;
-typedef int32_t		    bfbmp_int32;
-typedef uint8_t 	    bfbmp_uint8;
-typedef uint16_t 	    bfbmp_uint16;
-typedef uint32_t 	    bfbmp_uint32;
-typedef size_t 	        bfbmp_size;
-typedef float 		    bfbmp_float;
-typedef double		    bfbmp_float64;
-typedef void* 		    bfbmp_address;
-typedef FILE*           bfbmp_file;
 
-// Callbaks
-typedef void(*bfbmp_read_callback)(bfbmp_char* buffer, bfbmp_size size);
-typedef void(*bfbmp_write_callback)(const bfbmp_char* filepath, bfbmp_size size);
 
-typedef struct
+#include <cstdint>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+
+using bfbmp_char = char;
+using bfbmp_int8 = int8_t;
+using bfbmp_int16 = int16_t;
+using bfbmp_int32 = int32_t;
+using bfbmp_uint8 = uint8_t;
+using bfbmp_uint16 = uint16_t;
+using bfbmp_uint32 = uint32_t;
+using bfbmp_size = uint32_t;
+using bfbmp_position = uint32_t;
+using bfbmp_offset = uint32_t;
+using bfbmp_string = std::string;
+using bfbmp_float32 = float;
+using bfbmp_float64 = double;
+
+static std::vector<bfbmp_string> sound_formats { ".wav", ".mp3", ".flac", ".ogg" };
+static std::vector<bfbmp_string> image_formats { ".png", ".jpg", ".bmp" };
+
+struct bfbmp_version
 {
-    bfbmp_char* data;
-    bfbmp_size  size;
-} bfbmp_string;
+    bfbmp_uint16 major = BFBMP_VERSION_MAJOR;
+    bfbmp_uint16 minor = BFBMP_VERSION_MINOR;
+};
 
-typedef enum
+struct bfbmp_header
 {
-    bfbmp_success = 0,
-    bfbmp_error,
-    bfbmp_io_error,
-    bfbmp_nullptr_error,
-    bfbmp_id_mismatch,
-    bfbmp_read_error,
-    bfbmp_not_ready,
-    bfbmp_wrong_file_extension,
-    bfbmp_no_audio_data,
-    bfbmp_no_image_data,
-    bfbmp_empty_buffer
-} bfbmp_result;
+    bfbmp_char id[4] = { 'F', 'B', 'M', 'P' };
+    bfbmp_version version;
+    bfbmp_size chunk_size = 32;
+    bfbmp_size total_size = 0;
+    bfbmp_position metadata_position = 0;
+    bfbmp_position image_position = 0;
+    bfbmp_position sound_position = 0;
+    bfbmp_position game_position = 0;
+};
 
-typedef struct
+struct bfbmp_metadata
 {
-    bfbmp_string  song_name;
-    bfbmp_string  sub_name;
-    bfbmp_string  author_name;
-    bfbmp_string  mapper_name;
-    bfbmp_int32  beats_per_minute;
-    bfbmp_int32  beats_per_measure;
-    bfbmp_float  start_offset;
-} bfbmp_metadata;
+    bfbmp_char id[4] = { 'M', 'E', 'T', 'A' };
+    bfbmp_uint32 chunk_size = 0;
+    bfbmp_string song_name = "None";
+    bfbmp_string sub_name = "None";
+    bfbmp_string author_name = "None";
+    bfbmp_string mapper_name = "None";
+    bfbmp_float32 beats_per_minute = 0;
+    bfbmp_uint8 beats_per_measure = 0;
+    bfbmp_float32 start_offset = 0.0f;
+};
 
-typedef struct
+enum bfbmp_note_type
 {
-    bfbmp_uint8* data;
-    bfbmp_size size;
-} bfbmp_data;
+    bfbmp_note_normal,
+    bfbmp_note_long
+};
 
-typedef struct
+struct bfbmp_note
 {
-    bfbmp_uint8 bigger;
-    bfbmp_uint8 major;
-    bfbmp_uint8 minor;
-    bfbmp_uint8 patch;
-} bfbmp_version;
+    bfbmp_note_type type;
+    bfbmp_float32 position;
+    bfbmp_float32 duration_in_beats;
+};
 
-typedef struct
+struct bfbmp_level
 {
-    bfbmp_version       version;
-    bfbmp_size          size;
-    bfbmp_metadata      metadata;
-    bfbmp_data          cover;
-    bfbmp_data          audio;
-} bfbmp;
+    bfbmp_float32 speed;
+    bfbmp_string name;
+    std::vector<bfbmp_note> notes;
+};
 
-
-
-// Version 0.4, not yet implemented
-typedef enum
+struct bfbmp
 {
-    bfbmp_wav,
-    bfbmp_ogg,
-    bfbmp_mp3,
-    bfbmp_flac
-} bfbmp_audio_type;
+    bfbmp_header header;
+    bfbmp_metadata metadata;
+    std::vector<bfbmp_uint8> image_data;
+    std::vector<bfbmp_uint8> sound_data;
+    std::vector<bfbmp_level> game_data;
+};
 
-/////////////////////////////////////////////////////////////////////
-/// PRIVATE API
-/////////////////////////////////////////////////////////////////////
-BFBMP_PRIVATE   bfbmp_uint8*    bfbmp__read_file_to_memory(const bfbmp_char* filepath, bfbmp_size* out_file_size);
-BFBMP_PRIVATE   bfbmp_result    bfbmp__free_buffer(void* buffer);
-BFBMP_PRIVATE   void            bfbmp__read(bfbmp_address dest, const void* buffer, bfbmp_size size);
-BFBMP_PRIVATE   void            bfbmp__read_string(bfbmp_address dest, const void* buffer, bfbmp_size size);
+static bool bfbmp_extcmp(const bfbmp_string& str, const bfbmp_string& cmp)
+{
+    const bfbmp_position extension_position = (bfbmp_size)str.find_last_of('.');
+    const bfbmp_string extension(str.data() + extension_position, str.data() + str.size());
+    return extension == cmp;
+}
 
-/////////////////////////////////////////////////////////////////////
+static bool bfbmp_id_check(const bfbmp_char id[4], const bfbmp_string& cmp)
+{
+    bfbmp_string str(id, id + 4);
+    str[4] = 0;
+    return str == cmp;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 /// PUBLIC API
-/////////////////////////////////////////////////////////////////////
-BFBMP_API       bfbmp*          bfbmp_init(void);
-BFBMP_API       bfbmp*          bfbmp_init_data(
-                                const bfbmp_char* song_name,
-                                const bfbmp_char* sub_name,
-                                const bfbmp_char* author_name,
-                                const bfbmp_char* mapper_name,
-                                bfbmp_int32 bpm,
-                                bfbmp_float start_off,
-                                bfbmp_int32 bpmeasure,
-                                const bfbmp_char* img_path,
-                                const bfbmp_char* snd_path
-                                );
-BFBMP_API       void            bfbmp_free(bfbmp* pbfbmp);
-BFBMP_API       bfbmp_uint32    bfbmp_get_version(void);
-BFBMP_API       bfbmp_result    bfbmp_read_memory(bfbmp_uint8* buffer, bfbmp_size size, bfbmp* pbfbmp);
-BFBMP_API       bfbmp_result    bfbmp_read_metadata_file(const bfbmp_char* filepath, bfbmp_metadata* metadata);
-BFBMP_API       bfbmp_result    bfbmp_read_file(const bfbmp_char* filepath, bfbmp* pbfbmp);
-BFBMP_API       bfbmp_result    bfbmp_read_metadata_memory(bfbmp_uint8* buffer, bfbmp_size size, bfbmp_metadata* metadata);
-BFBMP_API       bfbmp_result    bfbmp_write_file(const bfbmp_char* filepath, bfbmp* pbfbmp);
-/////////////////////////////////////////////////////////////////////
-/// IMPLEMENTATION
-/////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool BFBMP_API bfbmp_read_header(const bfbmp_string& filepath, bfbmp_header& header);
+bool BFBMP_API bfbmp_read_header(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp_header& header);
+bool BFBMP_API bfbmp_read_metadata(const bfbmp_string& filepath, bfbmp_metadata& metadata);
+bool BFBMP_API bfbmp_read_metadata(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp_metadata& metadata);
+bool BFBMP_API bfbmp_read_image(const bfbmp_string& filepath, bfbmp& bfbmp);
+bool BFBMP_API bfbmp_read_image(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp& bfbmp);
+bool BFBMP_API bfbmp_read_sound(const bfbmp_string& filepath, bfbmp& bfbmp);
+bool BFBMP_API bfbmp_read_sound(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp& bfbmp);
+bool BFBMP_API bfbmp_load_sound(const bfbmp_string& filepath, bfbmp& bfbmp);
+bool BFBMP_API bfbmp_load_sound(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp& bfbmp);
+bool BFBMP_API bfbmp_load_image(const bfbmp_string& filepath, bfbmp& bfbmp);
+bool BFBMP_API bfbmp_load_image(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp& bfbmp);
+bool BFBMP_API bfbmp_encode(const bfbmp_string& filepath, const bfbmp& bfbmp);
+bool BFBMP_API bfbmp_encode(const bfbmp_string& filepath, const bfbmp_string& image_path, const bfbmp_string& sound_path, bfbmp& bfbmp);
+bool BFBMP_API bfbmp_decode(const bfbmp_string& filepath, bfbmp& bfbmp);
+
 #if defined(BFBMP_IMPLEMENTATION)
-BFBMP_API bfbmp* bfbmp_init(void)
+bool bfbmp_read_header(const bfbmp_string& filepath, bfbmp_header& header)
 {
-    bfbmp* pbfbmp = BFBMP_MALLOC(sizeof(bfbmp));
-    BFBMP_MEMSET(pbfbmp, 0, sizeof(bfbmp));
-    const bfbmp_uint32 version = bfbmp_get_version();
-    BFBMP_MEMCPY(&pbfbmp->version, &version, sizeof(bfbmp_version));
-    return pbfbmp;
+    std::ifstream stream(filepath, std::ios::in | std::ios::binary);
+    if(!stream.is_open()) return false;
+    stream.read((bfbmp_char*)&header, sizeof(bfbmp_header));
+    stream.close();
+    if(!bfbmp_id_check(header.id, "FBMP")) return false;
+    if(header.chunk_size == 0) return false;
+    return true;
 }
-
-BFBMP_API bfbmp* bfbmp_init_data(
-const bfbmp_char* song_name,
-const bfbmp_char* sub_name,
-const bfbmp_char* author_name,
-const bfbmp_char* mapper_name,
-bfbmp_int32 bpm,
-bfbmp_float start_off,
-bfbmp_int32 bpmeasure,
-const bfbmp_char* img_path,
-const bfbmp_char* snd_path
-)
+bool bfbmp_read_header(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp_header& header)
 {
-    const bfbmp_uint32 version = bfbmp_get_version();
-    bfbmp_size str_size = 0;
+    if(!buffer) return false;
+    if(!(buffer + buffer_size > buffer + sizeof(bfbmp_header))) return false;
+    const bfbmp_string buff(buffer, buffer + sizeof(bfbmp_header));
+    std::stringstream ss(buff, std::ios::in | std::ios::binary);
+    ss.read((bfbmp_char*)&header, sizeof(bfbmp_header));
+    ss.clear();
+    if(!bfbmp_id_check(header.id, "FBMP")) return false;
+    if(header.chunk_size == 0) return false;
+    return true;
+}
+bool bfbmp_read_metadata(const bfbmp_string& filepath, bfbmp_metadata& metadata)
+{
+    std::ifstream stream(filepath, std::ios::in | std::ios::binary);
+    if(!stream.is_open()) return false;
+    bfbmp_header header;
+    if(!bfbmp_read_header(filepath, header)) return false;
+    if(header.metadata_position == 0) return false;
     
-    bfbmp* pbfbmp = BFBMP_MALLOC(sizeof(bfbmp));
-    BFBMP_MEMSET(pbfbmp, 0, sizeof(bfbmp));
-    BFBMP_MEMCPY(&pbfbmp->version, &version, sizeof(bfbmp_version));
+    stream.seekg(header.metadata_position, std::ios::beg);
+    stream.read(metadata.id, 4);
+    if(!bfbmp_id_check(metadata.id, "META")) return false;
 
-
-    str_size = strlen(song_name) + 1;
-    pbfbmp->metadata.song_name.data = BFBMP_MALLOC(str_size);
-    BFBMP_MEMCPY(pbfbmp->metadata.song_name.data, song_name, str_size);
-    pbfbmp->metadata.song_name.data[str_size] = BFBMP_NULL_CHARACTER;
-    
-    str_size = strlen(sub_name) + 1;
-    pbfbmp->metadata.sub_name.data = BFBMP_MALLOC(str_size);
-    BFBMP_MEMCPY(pbfbmp->metadata.sub_name.data, sub_name, str_size);
-    pbfbmp->metadata.sub_name.data[str_size] = BFBMP_NULL_CHARACTER;
-
-    str_size = strlen(author_name) + 1;
-    pbfbmp->metadata.author_name.data = BFBMP_MALLOC(str_size);
-    BFBMP_MEMCPY(pbfbmp->metadata.author_name.data, author_name, str_size);
-    pbfbmp->metadata.author_name.data[str_size] = BFBMP_NULL_CHARACTER;
-
-    str_size = strlen(mapper_name) + 1;
-    pbfbmp->metadata.mapper_name.data = BFBMP_MALLOC(str_size);
-    BFBMP_MEMCPY(pbfbmp->metadata.mapper_name.data, mapper_name, str_size);
-    pbfbmp->metadata.mapper_name.data[str_size] = BFBMP_NULL_CHARACTER;
-    
-    pbfbmp->metadata.beats_per_minute = bpm;
-    pbfbmp->metadata.start_offset = start_off;
-    pbfbmp->metadata.beats_per_measure = bpmeasure;
-
-    pbfbmp->cover.data = bfbmp__read_file_to_memory(img_path, &pbfbmp->cover.size);
-    pbfbmp->audio.data = bfbmp__read_file_to_memory(snd_path, &pbfbmp->audio.size);
-    return pbfbmp;
-}
-
-BFBMP_API void bfbmp_free(bfbmp* pbfbmp)
-{
-    BFBMP_FREE(pbfbmp->metadata.song_name.data);
-    BFBMP_FREE(pbfbmp->metadata.sub_name.data);
-    BFBMP_FREE(pbfbmp->metadata.author_name.data);
-    BFBMP_FREE(pbfbmp->metadata.mapper_name.data);
-    BFBMP_FREE(pbfbmp->cover.data);
-    BFBMP_FREE(pbfbmp->audio.data);
-    BFBMP_FREE(pbfbmp);
-}
-
-BFBMP_API bfbmp_uint32 bfbmp_get_version(void)
-{
-    return BFBMP_VERSION;
-}
-
-BFBMP_PRIVATE bfbmp_uint8* bfbmp__read_file_to_memory(const bfbmp_char* filepath, bfbmp_size* out_file_size)
-{
-    bfbmp_file file = fopen(filepath, "rb");
-    fseek(file, 0, SEEK_END);
-    const bfbmp_size size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    bfbmp_uint8* buffer = BFBMP_MALLOC(size);
-    fread(buffer, size, 1, file);
-    if(out_file_size) *out_file_size = size;
-    return buffer;
-}
-
-BFBMP_PRIVATE bfbmp_result bfbmp__free_buffer(void* buffer)
-{
-    BFBMP_FREE(buffer);
-    return bfbmp_success;
-}
-
-BFBMP_PRIVATE void bfbmp__read(bfbmp_address dest, bfbmp_uint8* buffer, bfbmp_size size)
-{
-    
-    BFBMP_MEMCPY(dest, buffer, size);
-}
-
-BFBMP_PRIVATE void bfbmp__read_string(bfbmp_address dest, bfbmp_uint8* buffer, bfbmp_size size)
-{
-    bfbmp_uint8* str = dest;
-    BFBMP_MEMCPY(str, buffer, size);
-    str[size] = BFBMP_NULL_CHARACTER;
-}
-
-BFBMP_API bfbmp_result bfbmp_read_memory(bfbmp_uint8* buffer, bfbmp_size size, bfbmp* pbfbmp)
-{
-    bfbmp_char id[5];
-    bfbmp__read_string(id, buffer, 4);
-    buffer += 4;
-    if(strcmp("FBMP", id) != 0)
-        return bfbmp_id_mismatch;
-
-    bfbmp__read(&pbfbmp->version, buffer, 4);
-    buffer += 4;
-    bfbmp__read(&pbfbmp->size, buffer, 4);
-    buffer += 4;
-
-    bfbmp__read_string(id, buffer, 4);
-    buffer += 4;
-    if(strcmp("META", id) != 0)
-        return bfbmp_id_mismatch;
-
-    buffer += 4;
+    stream.read((bfbmp_char*)&metadata.chunk_size, sizeof(bfbmp_uint32));
+    if(metadata.chunk_size == 0) return false;
     
     bfbmp_size length = 0;
-    
-    bfbmp__read(&length, buffer, 4);
-    buffer += 4;
-    pbfbmp->metadata.song_name.data = BFBMP_MALLOC(length);
-    pbfbmp->metadata.song_name.size = length;
-    bfbmp__read(pbfbmp->metadata.song_name.data, buffer, length);
-    pbfbmp->metadata.song_name.data[length] = BFBMP_NULL_CHARACTER;
-    buffer += length;
+    stream.read((bfbmp_char*)&length, sizeof(bfbmp_uint32));
+    metadata.song_name.resize(length);
+    stream.read(&metadata.song_name[0], length);
 
-    bfbmp__read(&length, buffer, 4);
-    buffer += 4;
-    pbfbmp->metadata.sub_name.data = BFBMP_MALLOC(length);
-    pbfbmp->metadata.sub_name.size = length;
-    bfbmp__read(pbfbmp->metadata.sub_name.data, buffer, length);
-    pbfbmp->metadata.sub_name.data[length] = BFBMP_NULL_CHARACTER;
-    buffer += length;
+    stream.read((bfbmp_char*)&length, sizeof(bfbmp_uint32));
+    metadata.sub_name.resize(length);
+    stream.read(&metadata.sub_name[0], length);
 
-    bfbmp__read(&length, buffer, 4);
-    buffer += 4;
-    pbfbmp->metadata.author_name.data = BFBMP_MALLOC(length);
-    pbfbmp->metadata.author_name.size = length;
-    bfbmp__read(pbfbmp->metadata.author_name.data, buffer, length);
-    pbfbmp->metadata.author_name.data[length] = BFBMP_NULL_CHARACTER;
-    buffer += length;
+    stream.read((bfbmp_char*)&length, sizeof(bfbmp_uint32));
+    metadata.author_name.resize(length);
+    stream.read(&metadata.author_name[0], length);
 
-    bfbmp__read(&length, buffer, 4);
-    buffer += 4;
-    pbfbmp->metadata.mapper_name.data = BFBMP_MALLOC(length);
-    pbfbmp->metadata.mapper_name.size = length;
-    bfbmp__read(pbfbmp->metadata.mapper_name.data, buffer, length);
-    pbfbmp->metadata.mapper_name.data[length] = BFBMP_NULL_CHARACTER;
-    buffer += length;
-    
-    bfbmp__read(&pbfbmp->metadata.beats_per_minute, buffer, 4);
-    buffer += 4;
-    bfbmp__read(&pbfbmp->metadata.start_offset, buffer, 4);
-    buffer += 4;
-    bfbmp__read(&pbfbmp->metadata.beats_per_measure, buffer, 4);
-    buffer += 4;
+    stream.read((bfbmp_char*)&length, sizeof(bfbmp_uint32));
+    metadata.mapper_name.resize(length);
+    stream.read(&metadata.mapper_name[0], length);
 
-    bfbmp__read_string(id, buffer, 4);
-    buffer += 4;
-    if(strcmp("!IMG", id) != 0)
-        return bfbmp_id_mismatch;
-
-    bfbmp__read(&length, buffer, 4);
-    buffer += 4;
-    pbfbmp->cover.size = length;
-    pbfbmp->cover.data = BFBMP_MALLOC(length);
-    bfbmp__read(pbfbmp->cover.data, buffer, length);
-    buffer += length;
-
-    bfbmp__read_string(id, buffer, 4);
-    buffer += 4;
-    if(strcmp("!SND", id) != 0)
-        return bfbmp_id_mismatch;
-
-    bfbmp__read(&length, buffer, 4);
-    buffer += 4;
-    pbfbmp->audio.size = length;
-    pbfbmp->audio.data = BFBMP_MALLOC(length);
-    bfbmp__read(pbfbmp->audio.data, buffer, length);
-    buffer += length;
-    return bfbmp_success;
+    stream.read((bfbmp_char*)&metadata.beats_per_minute, sizeof(bfbmp_float32));
+    stream.read((bfbmp_char*)&metadata.beats_per_measure, sizeof(bfbmp_uint8));
+    stream.read((bfbmp_char*)&metadata.start_offset, sizeof(bfbmp_float32));
+    return true;
 }
-
-BFBMP_API bfbmp_result bfbmp_read_file(const bfbmp_char* filepath, bfbmp* pbfbmp)
+bool bfbmp_read_metadata(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp_metadata& metadata)
 {
-    bfbmp_size size;
-    bfbmp_uint8* file = bfbmp__read_file_to_memory(filepath, &size);
-    return bfbmp_read_memory(file, size, pbfbmp);
-}
-
-BFBMP_API bfbmp_result bfbmp_read_metadata_memory(bfbmp_uint8* buffer, bfbmp_size size, bfbmp_metadata* metadata)
-{
-    bfbmp_char id[5];
-    bfbmp__read_string(id, buffer, 4);
-    buffer += 4;
-    if(strcmp("FBMP", id) != 0)
-        return bfbmp_id_mismatch;
+    if(!buffer) return false;
+    bfbmp_header header;
+    if(!bfbmp_read_header(buffer, buffer_size, header)) return false;
+    if(header.metadata_position == 0) return false;
     
-    buffer += 8;
+    std::stringstream ss({ buffer, buffer + buffer_size }, std::ios::in | std::ios::binary);
+    
+    ss.seekg(header.metadata_position, std::ios::beg);
+    ss.read(metadata.id, 4);
+    if(!bfbmp_id_check(metadata.id, "META")) return false;
 
-    bfbmp__read_string(id, buffer, 4);
-    buffer += 4;
-    if(strcmp("META", id) != 0)
-        return bfbmp_id_mismatch;
-
-    buffer += 4;
+    ss.read((bfbmp_char*)&metadata.chunk_size, sizeof(bfbmp_uint32));
+    if(metadata.chunk_size == 0) return false;
     
     bfbmp_size length = 0;
-    
-    bfbmp__read(&length, buffer, 4);
-    buffer += 4;
-    metadata->song_name.data = BFBMP_MALLOC(length);
-    metadata->song_name.size = length;
-    bfbmp__read(metadata->song_name.data, buffer, length);
-    metadata->song_name.data[length] = BFBMP_NULL_CHARACTER;
-    buffer += length;
+    ss.read((bfbmp_char*)&length, sizeof(bfbmp_uint32));
+    metadata.song_name.resize(length);
+    ss.read(&metadata.song_name[0], length);
 
-    bfbmp__read(&length, buffer, 4);
-    buffer += 4;
-    metadata->sub_name.data = BFBMP_MALLOC(length);
-    metadata->sub_name.size = length;
-    bfbmp__read(metadata->sub_name.data, buffer, length);
-    metadata->sub_name.data[length] = BFBMP_NULL_CHARACTER;
-    buffer += length;
+    ss.read((bfbmp_char*)&length, sizeof(bfbmp_uint32));
+    metadata.sub_name.resize(length);
+    ss.read(&metadata.sub_name[0], length);
 
-    bfbmp__read(&length, buffer, 4);
-    buffer += 4;
-    metadata->author_name.data = BFBMP_MALLOC(length);
-    metadata->author_name.size = length;
-    bfbmp__read(metadata->author_name.data, buffer, length);
-    metadata->author_name.data[length] = BFBMP_NULL_CHARACTER;
-    buffer += length;
+    ss.read((bfbmp_char*)&length, sizeof(bfbmp_uint32));
+    metadata.author_name.resize(length);
+    ss.read(&metadata.author_name[0], length);
 
-    bfbmp__read(&length, buffer, 4);
-    buffer += 4;
-    metadata->mapper_name.data = BFBMP_MALLOC(length);
-    metadata->mapper_name.size = length;
-    bfbmp__read(metadata->mapper_name.data, buffer, length);
-    metadata->mapper_name.data[length] = BFBMP_NULL_CHARACTER;
-    buffer += length;
-    
-    bfbmp__read(&metadata->beats_per_minute, buffer, 4);
-    buffer += 4;
-    bfbmp__read(&metadata->start_offset, buffer, 4);
-    buffer += 4;
-    bfbmp__read(&metadata->beats_per_measure, buffer, 4);
-    return bfbmp_success;
+    ss.read((bfbmp_char*)&length, sizeof(bfbmp_uint32));
+    metadata.mapper_name.resize(length);
+    ss.read(&metadata.mapper_name[0], length);
+
+    ss.read((bfbmp_char*)&metadata.beats_per_minute, sizeof(bfbmp_float32));
+    ss.read((bfbmp_char*)&metadata.beats_per_measure, sizeof(bfbmp_uint8));
+    ss.read((bfbmp_char*)&metadata.start_offset, sizeof(bfbmp_float32));
+    return true;
 }
-
-BFBMP_API bfbmp_result bfbmp_read_metadata_file(const bfbmp_char* filepath, bfbmp_metadata* metadata)
+bool bfbmp_read_image(const bfbmp_string& filepath, bfbmp& bfbmp)
 {
-    bfbmp_size size;
-    bfbmp_uint8* file = bfbmp__read_file_to_memory(filepath, &size);
-    return bfbmp_read_metadata_memory(file, size, metadata);
+    if(bfbmp.header.image_position == 0) return false;
+    std::ifstream stream(filepath, std::ios::in | std::ios::binary);
+    if(!stream.is_open()) return false;
+    stream.seekg(bfbmp.header.image_position, std::ios::beg);
+    bfbmp_char img_id[4];
+    stream.read(img_id, 4);
+    if(!bfbmp_id_check(img_id, "!IMG")) return false;
+    bfbmp_size chunk_size;
+    stream.read((bfbmp_char*)&chunk_size, sizeof(bfbmp_size));
+    if(chunk_size == 0) return false;
+    bfbmp.image_data.resize(chunk_size);
+    stream.read((bfbmp_char*)&bfbmp.image_data[0], chunk_size);
+    if(bfbmp.image_data.empty()) return false;
+    return true;
 }
-
-BFBMP_API bfbmp_result bfbmp_write_file(const bfbmp_char* filepath, bfbmp* pbfbmp)
+bool bfbmp_read_image(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp& bfbmp)
 {
-    bfbmp_file file = fopen(filepath, "wb");
-    if(!file) return bfbmp_nullptr_error;
-    bfbmp_size size = 0;
-    fwrite("FBMP", 4, 1, file);
-    fwrite(&pbfbmp->version, sizeof(bfbmp_version), 1, file);
-    fwrite("____", 4, 1, file);
-    const bfbmp_int32 file_begin = ftell(file);
-
-    fwrite("META", 4, 1, file);
-    fwrite("____", 4, 1, file);
-    const bfbmp_int32 meta_begin = ftell(file);
-    size = strlen(pbfbmp->metadata.song_name.data);
-    fwrite(&size, 4, 1, file);
-    fwrite(pbfbmp->metadata.song_name.data, size, 1, file);
+    if(!buffer) return false;
+    if(buffer_size == 0) return false;
+    if(bfbmp.header.image_position == 0) return false;
+    std::stringstream ss({ buffer, buffer + buffer_size }, std::ios::in | std::ios::binary);
     
-    size = strlen(pbfbmp->metadata.sub_name.data);
-    fwrite(&size, 4, 1, file);
-    fwrite(pbfbmp->metadata.sub_name.data, size, 1, file);
-
-    size = strlen(pbfbmp->metadata.author_name.data);
-    fwrite(&size, 4, 1, file);
-    fwrite(pbfbmp->metadata.author_name.data, size, 1, file);
-
-    size = strlen(pbfbmp->metadata.mapper_name.data);
-    fwrite(&size, 4, 1, file);
-    fwrite(pbfbmp->metadata.mapper_name.data, size, 1, file);
-
-    fwrite(&pbfbmp->metadata.beats_per_minute, 4, 1, file);
-    fwrite(&pbfbmp->metadata.start_offset, 4, 1, file);
-    fwrite(&pbfbmp->metadata.beats_per_measure, 4, 1, file);
-    const bfbmp_int32 meta_end = ftell(file);
-    fwrite("!IMG", 4, 1, file);
-    fwrite(&pbfbmp->cover.size, 4, 1, file);
-    fwrite(pbfbmp->cover.data, pbfbmp->cover.size, 1, file);
-
-    fwrite("!SND", 4, 1, file);
-    fwrite(&pbfbmp->audio.size, 4, 1, file);
-    fwrite(pbfbmp->audio.data, pbfbmp->audio.size, 1, file);
-    const bfbmp_int32 file_end = ftell(file);
-
-    //fseek(file, meta_begin - 4, SEEK_SET);
-    //const bfbmp_int32 meta_size = meta_end - meta_begin;
-    //fwrite(&meta_size, 4, 1, file);
-
-    //fseek(file, file_begin - 4, SEEK_SET);
-    //const bfbmp_int32 file_size = file_end - file_begin;
-    //fwrite(&file_size, 4, 1, file);
-
-    fclose(file);
-    return bfbmp_success;
+    ss.seekg(bfbmp.header.image_position, std::ios::beg);
+    bfbmp_char img_id[4];
+    ss.read(img_id, 4);
+    if(!bfbmp_id_check(img_id, "!IMG")) return false;
+    bfbmp_size chunk_size;
+    ss.read((bfbmp_char*)&chunk_size, sizeof(bfbmp_char));
+    if(chunk_size == 0) return false;
+    bfbmp.image_data.resize(chunk_size);
+    ss.read((bfbmp_char*)&bfbmp.image_data[0], chunk_size);
+    if(bfbmp.image_data.empty()) return false;
+    return true;
 }
-#endif // IMPLEMENTATION
-#endif  // BFBMP_HEADER
+bool bfbmp_read_sound(const bfbmp_string& filepath, bfbmp& bfbmp)
+{
+    if(bfbmp.header.sound_position == 0) return false;
+    std::ifstream stream(filepath, std::ios::in | std::ios::binary);
+    if(!stream.is_open()) return false;
+    stream.seekg(bfbmp.header.sound_position, std::ios::beg);
+    bfbmp_char snd_id[4];
+    stream.read(snd_id, 4);
+    if(!bfbmp_id_check(snd_id, "!SND")) return false;
+    bfbmp_size chunk_size;
+    stream.read((bfbmp_char*)&chunk_size, sizeof(bfbmp_size));
+    if(chunk_size == 0) return false;
+    bfbmp.sound_data.resize(chunk_size);
+    stream.read((bfbmp_char*)&bfbmp.sound_data[0], chunk_size);
+    if(bfbmp.sound_data.empty()) return false;
+    return true;
+}
+bool bfbmp_read_sound(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp& bfbmp)
+{
+    if(!buffer) return false;
+    if(buffer_size == 0) return false;
+    if(bfbmp.header.sound_position == 0) return false;
+    std::stringstream ss({ buffer, buffer + buffer_size }, std::ios::in | std::ios::binary);
+    
+    ss.seekg(bfbmp.header.sound_position, std::ios::beg);
+    bfbmp_char snd_id[4];
+    ss.read(snd_id, 4);
+    if(!bfbmp_id_check(snd_id, "!SND")) return false;
+    bfbmp_size chunk_size;
+    ss.read((bfbmp_char*)&chunk_size, sizeof(bfbmp_char));
+    if(chunk_size == 0) return false;
+    bfbmp.sound_data.resize(chunk_size);
+    ss.read((bfbmp_char*)&bfbmp.sound_data[0], chunk_size);
+    if(bfbmp.sound_data.empty()) return false;
+    return true;
+}
+bool bfbmp_load_sound(const bfbmp_string& filepath, bfbmp& bfbmp)
+{
+    {
+        const bfbmp_position extension_position = filepath.find_last_of('.');
+        const bfbmp_string extension(filepath.data() + extension_position, filepath.data() + filepath.size());
+        bfbmp_int32 index = -1;
+        for(bfbmp_uint32 i = 0; i < sound_formats.size(); i++)
+            if(sound_formats[i] == extension)
+            {
+                index = i;
+                break;
+            }
+        if(index == -1) return false;
+    }
+    
+    std::ifstream file(filepath, std::ios::in | std::ios::binary);
+    if(!file.is_open()) return false;
+    bfbmp.sound_data = std::vector<bfbmp_uint8>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    file.close();
+    if(bfbmp.sound_data.empty()) return false;
+    return true;
+}
+bool bfbmp_load_sound(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp& bfbmp)
+{
+    if(!(buffer || buffer_size > 0)) return false;
+    bfbmp.sound_data = std::vector<bfbmp_uint8>(buffer, buffer + buffer_size);
+    if(bfbmp.sound_data.empty()) return false;
+    return true;
+}
+bool bfbmp_load_image(const bfbmp_string& filepath, bfbmp& bfbmp)
+{
+    {
+        bfbmp_int32 index = -1;
+        for(bfbmp_uint32 i = 0; i < image_formats.size(); i++)
+            if(bfbmp_extcmp(filepath, image_formats[i]))
+            {
+                index = i;
+                break;
+            }
+        if(index == -1) return false;
+    }
+    
+    std::ifstream file(filepath, std::ios::in | std::ios::binary);
+    if(!file.is_open()) return false;
+    bfbmp.image_data = std::vector<bfbmp_uint8>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    file.close();
+    if(bfbmp.sound_data.empty()) return false;
+    return true;
+}
+bool bfbmp_load_image(const bfbmp_uint8* buffer, bfbmp_size buffer_size, bfbmp& bfbmp)
+{
+    if(!buffer) return false;
+    bfbmp.image_data = std::vector<bfbmp_uint8>(buffer, buffer + buffer_size);
+    if(bfbmp.image_data.empty()) return false;
+    return true;
+}
+bool bfbmp_encode(const bfbmp_string& filepath, const bfbmp& bfbmp)
+{
+    bfbmp_string filename = filepath;
+    if(bfbmp.image_data.empty()) return false;
+    if(bfbmp.sound_data.empty()) return false;
+    if(!bfbmp_extcmp(filename, ".bfbmp"))
+        filename += ".bfbmp";
+    
+    std::ofstream stream(filename, std::ios::out | std::ios::binary);
+    if(!stream.is_open()) return false;
+
+    const bfbmp_position begin_hd = stream.tellp();
+    stream.write((bfbmp_char*)&bfbmp.header, sizeof(bfbmp_header));
+    const bfbmp_position end_hd = stream.tellp();
+    bfbmp_size length = 0;
+
+    const bfbmp_position begin_meta = stream.tellp();
+    stream.write(bfbmp.metadata.id, 4);
+    stream.write("____", 4);
+    length = bfbmp.metadata.song_name.size() + 1;
+    stream.write((bfbmp_char*)&length, 4);
+    stream.write(bfbmp.metadata.song_name.data(), length);
+
+    length = bfbmp.metadata.sub_name.size() + 1;
+    stream.write((bfbmp_char*)&length, 4);
+    stream.write(bfbmp.metadata.sub_name.data(), length);
+
+    length = bfbmp.metadata.author_name.size() + 1;
+    stream.write((bfbmp_char*)&length, 4);
+    stream.write(bfbmp.metadata.author_name.data(), length);
+
+    length = bfbmp.metadata.mapper_name.size() + 1;
+    stream.write((bfbmp_char*)&length, 4);
+    stream.write(bfbmp.metadata.mapper_name.data(), length);
+
+    stream.write((const bfbmp_char*)&bfbmp.metadata.beats_per_minute, sizeof(bfbmp_float32));
+    stream.write((const bfbmp_char*)&bfbmp.metadata.beats_per_measure, sizeof(bfbmp_uint32));
+    stream.write((const bfbmp_char*)&bfbmp.metadata.start_offset, sizeof(bfbmp_float32));
+    const bfbmp_position end_meta = stream.tellp();
+
+    const bfbmp_position begin_img = stream.tellp();
+    stream.write("!IMG", 4);
+    length = bfbmp.image_data.size();
+    stream.write((bfbmp_char*)&length, sizeof(bfbmp_uint32));
+    stream.write((const bfbmp_char*)&bfbmp.image_data[0], length);
+    const bfbmp_position end_img = stream.tellp();
+
+    const bfbmp_position begin_snd = stream.tellp();
+    stream.write("!SND", 4);
+    length = bfbmp.sound_data.size();
+    stream.write((bfbmp_char*)&length, sizeof(bfbmp_uint32));
+    stream.write((const bfbmp_char*)&bfbmp.sound_data[0], length);
+    const bfbmp_position end_snd = stream.tellp();
+
+
+
+    stream.seekp(offsetof(bfbmp_header, metadata_position), std::ios::beg);
+    stream.write((const bfbmp_char*)&begin_meta, sizeof(bfbmp_position));
+
+    stream.seekp(offsetof(bfbmp_header, image_position), std::ios::beg);
+    stream.write((const bfbmp_char*)&begin_img, sizeof(bfbmp_position));
+
+    stream.seekp(offsetof(bfbmp_header, sound_position), std::ios::beg);
+    stream.write((const bfbmp_char*)&begin_snd, sizeof(bfbmp_position));
+    
+    
+    stream.seekp(offsetof(bfbmp_header, total_size), std::ios::beg);
+    const bfbmp_size total_size = end_snd;
+    stream.write((const bfbmp_char*)&total_size, sizeof(bfbmp_size));
+
+    stream.seekp(begin_meta + 4, std::ios::beg);
+    const bfbmp_size meta_size = end_meta - begin_meta;
+    stream.write((const bfbmp_char*)&meta_size, sizeof(bfbmp_size));
+    
+    return true;
+}
+bool bfbmp_encode(const bfbmp_string& filepath, const bfbmp_string& image_path, const bfbmp_string& sound_path, bfbmp& bfbmp)   
+{
+    if(!(filepath.empty() || image_path.empty() || sound_path.empty())) return false;
+    
+    bfbmp_load_image(image_path, bfbmp);
+    bfbmp_load_sound(sound_path, bfbmp);
+    bfbmp_encode(filepath, bfbmp);
+    return true;
+}
+bool bfbmp_decode(const bfbmp_string& filepath, bfbmp& bfbmp)
+{
+    if(!bfbmp_read_header(filepath, bfbmp.header)) return false;
+    if(!bfbmp_read_metadata(filepath, bfbmp.metadata)) return false;
+    if(!bfbmp_read_image(filepath, bfbmp)) return false;
+    if(!bfbmp_read_sound(filepath, bfbmp)) return false;
+    return true;
+}
+#endif
+#endif
