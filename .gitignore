@@ -1,4 +1,6 @@
 ﻿.idea
+.vs
+.vscode
 *.sln
 *.sln.DotSettings.user
 *.vcxproj
@@ -7,3 +9,6 @@
 *.exe
 **/binaries
 **/intermediate
+**Makefile
+**.CMakeLists.txt
+**.cmake
