@@ -5,7 +5,6 @@
 #define BFBMP_VERSION_MINOR 4
 
 
-#if defined(BFBMP_BUILD_DLL)
 #if defined(_MSC_VER)
 #define BFBMP_DLL_EXPORT _declspec(dllexport)
 #define BFBMP_DLL_IMPORT _declspec(dllimport)
@@ -22,9 +21,10 @@
 #else
 #define BFBMP_API BFBMP_DLL_IMPORT
 #endif
-#else
+
+#if defined(BFBMP_STATIC)
 #define BFBMP_API extern
-#endif
+#endif 
 
 
 
