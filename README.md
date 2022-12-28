@@ -1,5 +1,5 @@
 # libbfbmp
-libbfbmp is a C++ single header library that provides APIs for reading and writing Tiwann's bfbmp files (Binary Format Beatmap) which stores beatmap data for a *future* rhythm game.
+libbfbmp is a C++ library that provides APIs for reading and writing Tiwann's bfbmp files (Binary Format Beatmap) which stores beatmap data for a *future* rhythm game.
 
 # BFBMP File Format
 You can find below the file format specifications, so it is possible to write its own program that read/write bfbmp files. <br>
@@ -7,6 +7,9 @@ Feel free to send a message at *erwann.messoah@gmail.com* for questions or sugge
 *NB: I'm currently making heavy changes on the file format structure. Make sure to update frequently...* <br>
 
 ### Header
+The header contains basic information about the content of the file such as file size or chunk offsets <br>
+*All offsets in the file are relative to the beginning of the file* <br>
+
 | Type    | Size (bytes) | Description                                                 |
 |---------|--------------|-------------------------------------------------------------|
 | char[4] | 4            | File ID "FBMP"                                              |
@@ -22,7 +25,7 @@ The META chunk contains metadata information such as song name, audio bpm etc <b
 
 | Type    | Size (bytes) | Description       |
 |---------|--------------|-------------------|
-| char[4] | 4            | Chunk ID "META    |
+| char[4] | 4            | Chunk ID "META"   |
 | uint32  | 4            | Chunk size        |
 | string  | ?            | Song name         |
 | string  | ?            | Sub name          |
@@ -41,6 +44,8 @@ The type _**string**_ refers to the following structure
 | char[size] | size         | String data |
 
 ### Image Chunk
+The IMG chunk contains image data. It can be jpeg data or png data. <br>
+
 | Type       | Size (Bytes)   | Description           |
 |------------|----------------|-----------------------|
 | char[4]    | 4              | IMG chunk ID *"!IMG"* |
@@ -48,69 +53,34 @@ The type _**string**_ refers to the following structure
 | char[size] | size           | Data                  |
 
 ### Sound Chunk
+The SND chunk contains sound data. It can be wav data, mp3 data, ogg data or flac data. <br>
+
 | Type       | Size (Bytes)   | Description           |
 |------------|----------------|-----------------------|
 | char[4]    | 4              | SND chunk ID *"!SND"* |
 | uint32     | 4              | Chunk size            |
 | char[size] | size           | Data                  |
+
 ----------------------------------------------------------
 # How to use
-As said above, libbfbmp is a single header library. <br>
-To use it simply download **[bfbmp.h][bfbmphlnk]** and place it into your C++ project.
-Then in a cpp file:
-```cpp
-#define BFBMP_IMPLEMENTATION
-#include "bfbmp.h"
-// Use APIs here
+First of all to use the library, make sure to have **git** installed then clone this repo.
+```shell
+git clone https://github.com/Tiwann/libbfbmp.git libbfbmp
 ```
 
-## Reading
-If you want to read all bfbmp data you have to use ```bfbmp_decode()``` apis:
-```c
-bfbmp bfbmp;
-bfbmp_decode("filepath", bfbmp);
-or
-bfbmp_decode(buffer, buffer_size, bfbmp);
-```
-Note that you can use ```bfbmp_read_metadata()``` to read metadata chunk only. <br>
-```
-bfbmp_metadata metadata;
-bfbmp_read_metadata("filepath", metadata);
+Then build the solution files with
+```shell
+C:\libbfbmp> .\premake\premake5.exe vs2022
 ```
 
-## Writing
-If you want to write bfbmp data to file you have to use  ```bfbmp_encode()``` apis:
-```c
-bfbmp bfbmp;
-// filling data...
-bfbmp_encode("filepath", bfbmp);
+You can chose whether to build a static lib or a shared lib using *--lib* argument
+```shell
+C:\libbfbmp> .\premake\premake5.exe vs2022 --lib=shared
+C:\libbfbmp> .\premake\premake5.exe vs2022 --lib=static
 ```
 
-# Demo Examples
-This repo includes some example projects that you can build and run.
-First, makes sure you have git installed then clone this repositoty
-```sh
-git clone https://github.com/Tiwann/libbfbmp.git
-or if you have ssh setup
-git clone git@github.com:Tiwann/libbfbmp.git
+If you are compiling with gcc you can build a Makefile project
+```shell
+$ ./premake/premake5 gmake2 --lib=shared
+$ ./premake/premake5 gmake2 --lib=static
 ```
-
-If using Visual Studio you can build a solution by running ```build.bat``` or
-```cmd
-C:\libbfbmp> .\premake\premake5 v2022
-```
-
-If not using Visual Studio you can generate a makefile with
-```sh
-$ ./premake/premake5 gmake2
-```
- Then build using
- ```sh
-$ make config=debug
-```
-
-Binaries are located into ```examples/{project name}/binaries/{configuration}```
-
-
-
-[bfbmphlnk]:<https://github.com/Tiwann/libbfbmp/blob/master/include/bfbmp.h>
