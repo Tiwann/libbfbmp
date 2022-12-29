@@ -1,7 +1,9 @@
+group "examples"
 project "bfbmp_read"
     kind "ConsoleApp"
     language "C++"
     cppdialect "C++20"
+    staticruntime "On"
 
     targetdir(binloc)
 	objdir(intloc)
@@ -32,3 +34,4 @@ project "bfbmp_read"
         runtime "Release"
         symbols "Off"
         optimize "On"
+group ""
