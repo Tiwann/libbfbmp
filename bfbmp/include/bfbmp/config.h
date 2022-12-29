@@ -11,7 +11,7 @@
 
 #if defined(BFBMP_SHARED)
     #if defined(BFBMP_EXPORTS)
-        #define BFBMP_API BFBMP_EXPORT
+        #define  BFBMP_API BFBMP_EXPORT
     #else
         #define BFBMP_API BFBMP_IMPORT
     #endif
