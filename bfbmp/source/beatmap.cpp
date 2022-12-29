@@ -177,12 +177,31 @@ bool beatmap::decode(const std::filesystem::path& filepath)
 
 bool beatmap::decode(uint8_t* buffer, size_t size)
 {
-    return false;
+    memstream memstream({ buffer, buffer + size }, std::ios::binary);
+    
+    memstream.read((uint8_t*)&header, sizeof(struct header));
+    if(header.chunk_size == 0) return false;
+    if(header.total_size == 0) return false;
+
+    if(!read_metadata(memstream)) return false;
+    if(!read_image(memstream)) return false;
+    if(!read_sound(memstream)) return false;
+    if(!read_game(memstream)) return false;
+    return true;
 }
 
 bool beatmap::decode(const std::vector<uint8_t>& buffer)
 {
-    return false;
+    memstream memstream({ buffer.begin(), buffer.end() }, std::ios::binary);
+    memstream.read((uint8_t*)&header, sizeof(struct header));
+    if(header.chunk_size == 0) return false;
+    if(header.total_size == 0) return false;
+
+    if(!read_metadata(memstream)) return false;
+    if(!read_image(memstream)) return false;
+    if(!read_sound(memstream)) return false;
+    if(!read_game(memstream)) return false;
+    return true;
 }
 
 bool beatmap::check_exts(const std::filesystem::path& filepath, const std::vector<std::string>& exts)

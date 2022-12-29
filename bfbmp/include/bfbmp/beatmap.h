@@ -41,7 +41,7 @@ private:
     static bool check_magics(void* data, const std::vector<std::string>& magics);
     bool read_metadata(memstream& stream);
     bool read_image(memstream& stream);
-    bool read_sound(memstream& memsteam);
-    bool read_game(memstream& memsteam);
+    bool read_sound(memstream& stream);
+    bool read_game(memstream& stream);
 };
 BFBMP_END
