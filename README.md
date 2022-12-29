@@ -36,13 +36,6 @@ The META chunk contains metadata information such as song name, audio bpm etc <b
 | float   | 4            | Start offset      |
 
 
-The type _**string**_ refers to the following structure
-
-| Type       | Size (bytes) | Description |
-|------------|--------------|-------------|
-| uint32     | 4            | Size        |
-| char[size] | size         | String data |
-
 ### Image Chunk
 The IMG chunk contains image data. It can be jpeg data or png data. <br>
 
@@ -61,26 +54,82 @@ The SND chunk contains sound data. It can be wav data, mp3 data, ogg data or fla
 | uint32     | 4              | Chunk size            |
 | char[size] | size           | Data                  |
 
+### Game Chunk
+The GAM chunk contains level data. <br>
+
+| Type       | Size (Bytes)       | Description                |
+|------------|--------------------|----------------------------|
+| char[4]    | 4                  | GAM chunk ID *"!GAM"*      |
+| uint32     | 4                  | Chunk size                 |
+| uint32     | 4                  | Number of level sub chunks |
+| level[num] | num * sizeof level | Level sub chunks           |
+
+#### Level Sub chunk
+
+| Type    | Size (Bytes) | Description           |
+|---------|--------------|-----------------------|
+| char[4] | 4            | LVL chunk ID *"!LVL"* |
+| string  | ?            | Level name            |
+| float   | 4            | Scroll speed          |
+
+#### Note sub chunk
+| Type      | Size (Bytes)      | Description           |
+|-----------|-------------------|-----------------------|
+| char[4]   | 4                 | NOT chunk ID *"!NOT"* |
+| uint32    | 4                 | Number of notes       |
+| note[num] | num * sizeof note | Notes                 |
+
+
+
+The type _**string**_ refers to the following structure
+
+| Type       | Size (bytes) | Description |
+|------------|--------------|-------------|
+| uint32     | 4            | Size        |
+| char[size] | size         | String data |
+
+The type _**note**_ refers to the following structure
+
+| Type   | Size (bytes) | Description         |
+|--------|--------------|---------------------|
+| uint32 | 4            | Note type           |
+| float  | 4            | position (in beats) |
+| float  | 4            | duration (in beats) |
+
+
 ----------------------------------------------------------
-# How to use
-First of all to use the library, make sure to have **git** installed then clone this repo.
+# How to build
+First of all, make sure to have **[git][gitlink]** installed then clone this repo.
 ```shell
 git clone https://github.com/Tiwann/libbfbmp.git libbfbmp
 ```
 
-Then build the solution files with
-```shell
-C:\libbfbmp> .\premake\premake5.exe vs2022
+## Building Visual Studio solution
+To build visual studio solution files <br>
+```cmd
+C:\libbfbmp>/premake/premake5.exe vs2022
 ```
 
-You can chose whether to build a static lib or a shared lib using *--lib* argument
-```shell
-C:\libbfbmp> .\premake\premake5.exe vs2022 --lib=shared
-C:\libbfbmp> .\premake\premake5.exe vs2022 --lib=static
+## Building Makefile project
+To build Makefile project
+```bash
+$ ./premake/premake5.exe gmake2
 ```
 
-If you are compiling with gcc you can build a Makefile project
-```shell
-$ ./premake/premake5 gmake2 --lib=shared
-$ ./premake/premake5 gmake2 --lib=static
+## Options
+### Library Type
+You can specify to build a static lib or a shared lib with the *--lib* argument:
+```cmd
+C:\libbfbmp>/premke/premake5.exe vs2022 --lib=static
+or
+C:\libbfbmp>/premke/premake5.exe vs2022 --lib=shared
 ```
+
+### Include Premake Scripts
+You can include premake scripts to the solution with *--addscripts*
+```cmd
+C:\libbfbmp>/premke/premake5.exe vs2022 --addscripts
+```
+
+
+[gitlink]:<https://git-scm.com/downloads>
