@@ -12,6 +12,7 @@ enum class BFBMP_API note_type : uint32_t
 struct BFBMP_API note
 {
     note_type type = note_type::note_normal;
+    uint8_t index = 0;
     float position = 0.0f;
     float duration = 0.0f;
 };
