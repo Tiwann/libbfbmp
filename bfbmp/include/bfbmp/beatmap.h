@@ -13,8 +13,8 @@
 #include "memstream.h"
 
 BFBMP_BEGIN
-static std::vector<std::string> sound_extensions { ".wav", ".mp3", ".flac", ".ogg" };
-static std::vector<std::string> sound_ids        { "RIFF", "ID3", "fLaC", "OggS" };
+static std::vector<std::string> sound_extensions { ".wav", ".flac", ".ogg" };
+static std::vector<std::string> sound_ids        { "RIFF", "fLaC", "OggS" };
 static std::vector<std::string> image_extensions { ".png", ".jpg" };
 static std::vector<std::string> image_ids        { { (char)0x89, (char)0x50, (char)0x4e, (char)0x47 } , { (char)0xff, (char)0xd8, (char)0xff, (char)0xe0 } };
 class BFBMP_API beatmap

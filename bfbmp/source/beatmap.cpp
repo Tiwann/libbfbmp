@@ -93,6 +93,7 @@ bool beatmap::encode(std::vector<uint8_t>& buffer)
             for(const auto& note : level.notes)
             {
                 memstream.write((const uint8_t*)&note.type, 4);
+                memstream.write(&note.index, 1);
                 memstream.write((const uint8_t*)&note.position, 4);
                 if(note.type == note_type::note_long)
                     memstream.write((const uint8_t*)&note.duration, 4);
@@ -155,23 +156,29 @@ bool beatmap::encode(const std::filesystem::path& filepath)
 
 bool beatmap::decode(const std::filesystem::path& filepath)
 {
-    ifstream filestream(filepath, std::ios::binary);
-    if(!filestream.is_open()) return false;
+    std::FILE* filestream = std::fopen(filepath.string().c_str(), "rb");
+    if(!filestream) return false;
     *this = beatmap();
-
-    memstream memstream;
-    memstream << filestream.rdbuf();
-    filestream.close();
     
+    (void)std::fseek(filestream, 0, SEEK_END);
+    const uint64_t size = std::ftell(filestream);
+    (void)std::fseek(filestream, 0, SEEK_SET);
+    std::basic_string<uint8_t> buff;
+    buff.resize(size);
+    (void)std::fread(buff.data(), 1, size, filestream);
+
+    memstream memstream(buff);
+    (void)std::fclose(filestream);
     memstream.read((uint8_t*)&header, sizeof(struct header));
     if(header.chunk_size == 0) return false;
     if(header.total_size == 0) return false;
-
+    
     if(!read_metadata(memstream)) return false;
     if(!read_image(memstream)) return false;
     if(!read_sound(memstream)) return false;
     if(!read_game(memstream)) return false;
     
+    memstream.clear();
     return true;
 }
 
@@ -364,6 +371,7 @@ bool beatmap::read_game(memstream& memstream)
         {
             note note;
             memstream.read((uint8_t*)&note.type, 4);
+            memstream.read(&note.index, 1);
             memstream.read((uint8_t*)&note.position, 4);
             if(note.type == note_type::note_long)
                 memstream.read((uint8_t*)&note.duration, 4);
