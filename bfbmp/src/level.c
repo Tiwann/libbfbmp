@@ -20,7 +20,7 @@ bfbmp_level_t bfbmp_level_create_with_name(const char* name)
     bfbmp_level_t level;
     const size_t str_size = strlen(name);
     level.name = name ? (char*)malloc(str_size) : NULL;
-    memcpy(level.name, name, str_size);
+    memcpy(level.name, name, str_size + 1);
     level.scroll_speed = 0.0f;
     level.notes = bfbmp_vector_note_create();
     return level;
