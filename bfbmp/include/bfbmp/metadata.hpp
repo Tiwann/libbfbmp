@@ -15,6 +15,17 @@ namespace bfbmp
             
         }
 
+        metadata_base(const bfbmp_metadata_t* metadata) : m_metadata(bfbmp_metadata_create())
+        {
+            set_song_name(metadata->song_name);
+            set_sub_name(metadata->sub_name);
+            set_author_name(metadata->author_name);
+            set_mapper_name(metadata->mapper_name);
+            set_bpm(metadata->beats_per_minute);
+            set_beats_per_measure(metadata->beats_per_measure);
+            set_start_offset(metadata->start_offset);
+        }
+
         metadata_base(const std::string& song_name, const std::string& sub_name, const std::string& author_name, const std::string& mapper_name)
             : m_metadata(bfbmp_metadata_create_with_names(song_name.c_str(), sub_name.c_str(), author_name.c_str(), mapper_name.c_str()))
         {
@@ -51,7 +62,7 @@ namespace bfbmp
             m_metadata.beats_per_minute = bpm;
         }
 
-        void set_beat_per_measure(uint8_t beats_per_measure)
+        void set_beats_per_measure(uint8_t beats_per_measure)
         {
             m_metadata.beats_per_measure = beats_per_measure;
         }
