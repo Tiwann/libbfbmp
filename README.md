@@ -102,105 +102,121 @@ The type _**note**_ refers to the following structure
 # How to build
 First of all, make sure to have **[git][gitlink]** installed then clone this repo.
 ```shell
-git clone https://github.com/Tiwann/libbfbmp.git libbfbmp
+git clone https://github.com/Tiwann/libbfbmp.git [directory]
 ```
+This project uses **[premake][premakelink]** as build tool.
 
 ## Building Visual Studio solution
 To build visual studio solution files <br>
-```cmd
-C:\libbfbmp>/premake/premake5.exe vs2022
+```shell
+$ PATH_TO_PREMAKE/premake5 vs2022
 ```
 
-## Building Makefile project
+## Building Makefiles
 To build Makefile project
-```bash
-$ ./premake/premake5.exe gmake2
+```shell
+$ PATH_TO_PREMAKE/premake5 gmake2
 ```
 
-## Options
-### Library Type
-You can specify to build a static lib or a shared lib with the *--lib* argument:
-```cmd
-C:\libbfbmp>/premke/premake5.exe vs2022 --lib=static
-or
-C:\libbfbmp>/premke/premake5.exe vs2022 --lib=shared
-```
-
-### Include Premake Scripts
-You can include premake scripts to the solution with *--addscripts*
-```cmd
-C:\libbfbmp>/premke/premake5.exe vs2022 --addscripts
-```
 -------------------------------------------------------
 # How to use
 To create a beatmap and write its data to a file:
-```cpp
-#include <bfbmp/beatmap.h>
+```c++
+#include <bfbmp/bfbmp.h>
 
-int main()
+int main(void)
 {
-    // create a beatmap object
-    bfbmp::beatmap beatmap;
-    
-    // fill metadata
-    beatmap.metadata.song_name = "The Song";
-    beatmap.metadata.sub_name = "feat. some artists";
-    beatmap.metadata.author_name = "The Author";
-    beatmap.metadata.mapper_name = "Map Creator";
+    // Initialize a beatmap object and set its metadata
+    bfbmp_beatmap_t beatmap = bfbmp_beatmap_create();
+    bfbmp_beatmap_set_song_name(&beatmap, "The Song Name");
+    bfbmp_beatmap_set_sub_name(&beatmap, "feat. some artist");
+    bfbmp_beatmap_set_author_name(&beatmap, "The author");
+    bfbmp_beatmap_set_mapper_name(&beatmap, "Map creator");
     beatmap.metadata.beats_per_minute = 160.0f;
     beatmap.metadata.beats_per_measure = 4;
     beatmap.metadata.start_offset = 0.0f;
+
+    // Create a level object and add notes to it
+    bfbmp_level_t level = bfbmp_level_create_with_name("Level Name");
+    level.scroll_speed = 1.0f;
+
+    bfbmp_note_t note;
+    note.duration = 1.0f;
+    note.position = 1.0f;
+    note.type = bfbmp_note_normal;
+    bfbmp_vector_note_push(&level.notes, note);
+
+    // Adding level into beatmap
+    bfbmp_vector_level_push(&beatmap.game_data, level);
     
-    // create level data
-    bfbmp::level lvl;
-    lvl.name = "Easy"
-    lvl.scroll_speed = 10.0f;
-    lvl.notes.push_back({ bfbmp::note_type::note_normal, 1.0f, 0.0f});
-    beatmap.game_data.push_back(lvl);
-    
-    // load audio and image
-    beatmap.load_image("path to image file");
-    beatmap.load_sound("path to audio file");
-    
-    // finally encode beatmap data to a file
-    beatmap.encode("path to file");
-    
-    // you can also write data to a buffer
-    std::vector<uint8_t> buffer;
-    beatmap.encode(buffer);
+    // Load image and sound into beatmpa object
+    bfbmp_beatmap_load_image(&beatmap, "Path/To/Image/File");
+    bfbmp_beatmap_load_sound(&beatmap, "Path/To/Audio/File");
+
+    // Finally, write beatmap data to file
+    const char* filepath = "Path/To/OutputFile.bfbmp";
+    const uint8_t result = bfbmp_beatmap_encode_file(&beatmap, filepath, BFBMP_FALSE);
+    if(result != BFBMP_SUCCESS) fprintf(stderr, "Failed to write beatmap to file!");
+
+    // Always free the beatmap object after using it
+    bfbmp_beatmap_free(&beatmap);
 }
 ```
 
 To read beatmap data:
-```cpp
-#include <bfbmp/beatmap.h>
+```c++
+#include <bfbmp/bfbmp.h>
 
-int main()
+int main(void)
 {
-    bfbmp::beatmap beatmap;
-    beatmap.decode("path to bfbmp file");
+    bfbmp_beatmap_t beatmap = bfbmp_beatmap_create();
+    const char* filepath = "Path/To/File.bfbmp";
+    bfbmp_beatmap_decode_file(&beatmap, filepath);
 }
 ```
 
 ## Error handling
-Each functions of the *`beatmap`* class returns a boolean for error checking and are coupled with exception throwing.
+Each public api functions return a `uint8_t` that is used as a boolean to check if an error occured. It's value could be `BFBMP_SUCCESS` or `BFBMP_FAIL`
 
-```cpp
-#include <iostream>
-#include <bfbmp/beatmap.h>
-#include <bfbmp/exception.h>
+```c++
+#include <stdio.h>
+#include <bfbmp/bfbmp.h>
 
-int main()
+int main(void)
 {
-    bfbmp::beatmap beatmap;
-
-    if(!beatmap.decode("path to file"))
-    {
-        std::cerr << "Failed to decode bfbmp file!\n;
+    bfbmp_beatmap_t beatmap = bfbmp_beatmap_create();
+    const char* filepath = "Path/To/File.bfbmp";
+    uint8_t result = bfbmp_beatmap_decode_file(&beatmap, filepath);
+    if(result != BFBMP_SUCCESS) 
+    { 
+        fprintf(stderr, "Failed to decode beatmap!");
+        return -1;
     }
+    return 0;
 }
 ```
 
 
+## C++ Wrapper
+A C++ header `bfbmp.hpp` is provided in the `include` directory that abstracts all the apis into C++ classes.
+
+```c++
+#include <bfbmp/bfbmp.hpp>
+#include <iostream>
+
+int main()
+{
+    const std::string filepath = "Path/To/File.bfbmp";
+    bfbmp::beatmap beatmap;
+    if(!beatmap.decode(filepath))
+    {
+        std::cerr << "Failed to decode beatmap!\n;
+        return -1;
+    }
+    return 0;
+}
+```
+
 
 [gitlink]:<https://git-scm.com/downloads>
+[premakelink]:<https://premake.github.io/>
