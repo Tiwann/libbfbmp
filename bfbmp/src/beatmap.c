@@ -187,6 +187,7 @@ uint8_t bfbmp_beatmap_encode_file(const bfbmp_beatmap_t* beatmap, const char* fi
 {
     BFBMP_CHECK(beatmap);
     BFBMP_CHECK(filepath);
+    //BFBMP_CHECK(bfbmp_beatmap_validate(beatmap));
 
     FILE* file = fopen(filepath, "wb");
     BFBMP_CHECK(file);
@@ -353,5 +354,81 @@ uint8_t bfbmp_beatmap_validate(const bfbmp_beatmap_t* beatmap)
     BFBMP_CHECK(beatmap->image_data && beatmap->image_size);
     BFBMP_CHECK(beatmap->sound_data && beatmap->sound_size);
     BFBMP_CHECK(beatmap->game_data.data && beatmap->game_data.count);
+    return BFBMP_TRUE;
+}
+
+uint8_t bfbmp_beatmap_set_song_name(bfbmp_beatmap_t* beatmap, const char* song_name)
+{
+    BFBMP_CHECK(beatmap);
+    return bfbmp_metadata_set_song_name(&beatmap->metadata, song_name);
+}
+
+uint8_t bfbmp_beatmap_set_sub_name(bfbmp_beatmap_t* beatmap, const char* sub_name)
+{
+    BFBMP_CHECK(beatmap);
+    return bfbmp_metadata_set_sub_name(&beatmap->metadata, sub_name);
+}
+
+uint8_t bfbmp_beatmap_set_author_name(bfbmp_beatmap_t* beatmap, const char* author_name)
+{
+    BFBMP_CHECK(beatmap);
+    return bfbmp_metadata_set_author_name(&beatmap->metadata, author_name);
+}
+
+uint8_t bfbmp_beatmap_set_mapper_name(bfbmp_beatmap_t* beatmap, const char* mapper_name)
+{
+    BFBMP_CHECK(beatmap);
+    return bfbmp_metadata_set_mapper_name(&beatmap->metadata, mapper_name);
+}
+
+typedef struct bfbmp_file
+{
+    uint8_t* data;
+    size_t   size;
+} bfbmp_file_t;
+
+static bfbmp_file_t* bfbmp_file_load(const char* filepath)
+{
+    bfbmp_file_t* file = (bfbmp_file_t*)malloc(sizeof(bfbmp_file_t));
+    if(!file)
+    {
+        free(file);
+        return NULL;
+    }
+
+    FILE* stream = fopen(filepath, "rb");
+    if(!stream)
+    {
+        free(file);
+        return NULL;
+    }
+
+    fseek(stream, 0, SEEK_END);
+    file->size = ftell(stream);
+    fseek(stream, 0, SEEK_SET);
+
+    file->data = malloc(file->size);
+    fread(file->data, 1, file->size, stream);
+    fclose(stream);
+    return file;
+}
+
+uint8_t bfbmp_beatmap_load_image(bfbmp_beatmap_t* beatmap, const char* filepath)
+{
+    BFBMP_CHECK(beatmap);
+    const bfbmp_file_t* file = bfbmp_file_load(filepath);
+    BFBMP_CHECK(file);
+    beatmap->image_data = file->data;
+    beatmap->image_size = file->size;
+    return BFBMP_TRUE;
+}
+
+uint8_t bfbmp_beatmap_load_sound(bfbmp_beatmap_t* beatmap, const char* filepath)
+{
+    BFBMP_CHECK(beatmap);
+    const bfbmp_file_t* file = bfbmp_file_load(filepath);
+    BFBMP_CHECK(file);
+    beatmap->sound_data = file->data;
+    beatmap->sound_size = file->size;
     return BFBMP_TRUE;
 }

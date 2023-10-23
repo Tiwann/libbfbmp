@@ -27,5 +27,10 @@ BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_decode_file(bfbmp_beatmap_t
 BFBMP_PUBLIC void            BFBMP_API bfbmp_beatmap_free(bfbmp_beatmap_t* beatmap);
 BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_encode_file(const bfbmp_beatmap_t* beatmap, const char* filepath, uint8_t compress);
 BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_validate(const bfbmp_beatmap_t* beatmap);
-
+BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_set_song_name(bfbmp_beatmap_t* beatmap, const char* song_name);
+BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_set_sub_name(bfbmp_beatmap_t* beatmap, const char* sub_name);
+BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_set_author_name(bfbmp_beatmap_t* beatmap, const char* author_name);
+BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_set_mapper_name(bfbmp_beatmap_t* beatmap, const char* mapper_name);
+BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_load_image(bfbmp_beatmap_t* beatmap, const char* filepath);
+BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_load_sound(bfbmp_beatmap_t* beatmap, const char* filepath);
 
