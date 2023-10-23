@@ -1,18 +1,18 @@
-﻿#pragma once
-#include "config.h"
-#include <cstdint>
+#pragma once
+#include "def.h"
 
-BFBMP_BEGIN
-enum class BFBMP_API note_type : uint32_t
+typedef enum
 {
-    note_normal,
-    note_long
-};
+    bfbmp_note_normal,
+    bfbmp_note_long
+} bfbmp_note_type;
 
-struct BFBMP_API note
+typedef struct __bfbmp_note
 {
-    note_type type = note_type::note_normal;
-    float position = 0.0f;
-    float duration = 0.0f;
-};
-BFBMP_END
+    bfbmp_note_type type;
+    float position;
+    float duration;
+} bfbmp_note_t;
+
+
+BFBMP_PUBLIC bfbmp_note_t BFBMP_API bfbmp_note_create(void);

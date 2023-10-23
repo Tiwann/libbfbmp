@@ -1,47 +1,31 @@
-﻿#pragma once
-#include <filesystem>
-#include <cstdint>
-#include <string>
-#include <vector>
-#include <sstream>
-#include <fstream>
-
-#include "config.h"
+#pragma once
+#include "def.h"
 #include "header.h"
 #include "metadata.h"
 #include "level.h"
-#include "memstream.h"
+#include "vector.h"
 
-BFBMP_BEGIN
-static std::vector<std::string> sound_extensions { ".wav", ".mp3", ".flac", ".ogg" };
-static std::vector<std::string> sound_ids        { "RIFF", "ID3", "fLaC", "OggS" };
-static std::vector<std::string> image_extensions { ".png", ".jpg" };
-static std::vector<std::string> image_ids        { { (char)0x89, (char)0x50, (char)0x4e, (char)0x47 } , { (char)0xff, (char)0xd8, (char)0xff, (char)0xe0 } };
-class BFBMP_API beatmap
+BFBMP_DECLARE_TEMPLATE_VECTOR_STRUCT(bfbmp_level_t, level)
+
+typedef struct __bfbmp_beatmap
 {
-public:
-    header               header;
-    metadata             metadata;
-    std::vector<uint8_t> image_data;
-    std::vector<uint8_t> sound_data;
-    std::vector<level>   game_data;
+    bfbmp_header_t header;
+    bfbmp_metadata_t metadata;
+    uint8_t* image_data;
+    size_t image_size;
+    uint8_t* sound_data;
+    size_t sound_size;
+    bfbmp_vector_level_t game_data;
+} bfbmp_beatmap_t;
 
-public:
-    bool load_image(const std::filesystem::path& filepath);
-    bool load_image(uint8_t* buffer, size_t size);
-    bool load_sound(const std::filesystem::path& filepath);
-    bool load_sound(uint8_t* buffer, size_t size);
-    bool encode(std::vector<uint8_t>& buffer);
-    bool encode(const std::filesystem::path& filepath);
-    bool decode(const std::filesystem::path& filepath);
-    bool decode(uint8_t* buffer, size_t size);
-    bool decode(const std::vector<uint8_t>& buffer);
-private:
-    static bool check_exts(const std::filesystem::path& filepath, const std::vector<std::string>& exts);
-    static bool check_magics(void* data, const std::vector<std::string>& magics);
-    bool read_metadata(memstream& stream);
-    bool read_image(memstream& stream);
-    bool read_sound(memstream& stream);
-    bool read_game(memstream& stream);
-};
-BFBMP_END
+
+typedef struct __bfbmp_memstream bfbmp_memstream_t;
+
+BFBMP_PUBLIC bfbmp_beatmap_t BFBMP_API bfbmp_beatmap_create(void);
+BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_decode_memory(bfbmp_beatmap_t* beatmap, uint8_t* buffer, size_t size);
+BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_decode_file(bfbmp_beatmap_t* beatmap, const char* filepath);
+BFBMP_PUBLIC void            BFBMP_API bfbmp_beatmap_free(bfbmp_beatmap_t* beatmap);
+BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_encode_file(const bfbmp_beatmap_t* beatmap, const char* filepath, uint8_t compress);
+BFBMP_PUBLIC uint8_t         BFBMP_API bfbmp_beatmap_validate(const bfbmp_beatmap_t* beatmap);
+
+
