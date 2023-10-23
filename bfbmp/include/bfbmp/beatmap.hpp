@@ -1,10 +1,15 @@
 #pragma once
 #include "bfbmp/beatmap.h"
 #include <string>
+#include <vector>
 
 
 namespace bfbmp
 {
+    
+    BFBMP_IMPL_TEMPLATE_VECTOR_FUNCTIONS_STATIC(bfbmp_level_t, level);
+    BFBMP_IMPL_TEMPLATE_VECTOR_FUNCTIONS_STATIC(bfbmp_note_t, note);
+    
     class beatmap
     {
     public:
@@ -110,6 +115,21 @@ namespace bfbmp
         std::string get_mapper_name() const
         {
             return m_beatmap.metadata.mapper_name;
+        }
+
+        std::vector<bfbmp_level_t> get_levels() const
+        {
+            return {m_beatmap.game_data.data, m_beatmap.game_data.data + m_beatmap.game_data.count};
+        }
+
+        void push_level(const bfbmp_level_t* level)
+        {
+            bfbmp_vector_level_push(&m_beatmap.game_data, *level);
+        }
+
+        bool pop_level()
+        {
+            return bfbmp_vector_level_pop(&m_beatmap.game_data);
         }
         
         bool validate() const

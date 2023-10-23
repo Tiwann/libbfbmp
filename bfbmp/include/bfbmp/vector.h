@@ -43,4 +43,13 @@ BFBMP_PRIVATE void bfbmp_vector_##Name##_free(bfbmp_vector_##Name##_t* vector) \
     vector->allocated = 0; \
     vector->count = 0; \
 } \
+\
+BFBMP_PRIVATE uint8_t bfbmp_vector_##Name##_pop(bfbmp_vector_##Name##_t* vector) \
+{ \
+    BFBMP_CHECK(vector);\
+    if(vector->count <= 0) return BFBMP_FALSE; \
+    memset(vector->data + (vector->count - 1), 0, sizeof(T)); \
+    vector->count--; \
+    return BFBMP_TRUE; \
+}
 
