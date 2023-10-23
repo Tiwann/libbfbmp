@@ -35,7 +35,7 @@ bfbmp_metadata_t bfbmp_metadata_create_with_names(const char* song, const char* 
     metadata.beats_per_minute = 0.0f;
     metadata.beats_per_measure = 0;
     metadata.start_offset = 0.0f;
-    return metadata;  
+    return metadata;
 }
 
 uint8_t bfbmp_metadata_read(bfbmp_memstream_t* memstream, const bfbmp_header_t* header, bfbmp_metadata_t* metadata)
@@ -88,14 +88,14 @@ uint8_t bfbmp_metadata_free(bfbmp_metadata_t* metadata)
 }
 
 
-static uint8_t copy_string(char* dest, const char* source)
+static uint8_t copy_string(char** dest, const char* source)
 {
-    if(dest && strlen(dest)) free(dest);
+    if(*dest && strlen(*dest)) free(*dest);
 
     const size_t str_size = strlen(source);
     BFBMP_CHECK(str_size);
-    dest = (char*)calloc(1, str_size + 1);
-    memcpy(dest, source, str_size);
+    *dest = (char*)calloc(1, str_size + 1);
+    memcpy(*dest, source, str_size + 1);
     return BFBMP_TRUE;
 }
 
@@ -103,26 +103,26 @@ uint8_t bfbmp_metadata_set_song_name(bfbmp_metadata_t* metadata, const char* son
 {
     BFBMP_CHECK(metadata);
     BFBMP_CHECK(song_name);
-    return copy_string(metadata->song_name, song_name);
+    return copy_string(&metadata->song_name, song_name);
 }
 
 uint8_t bfbmp_metadata_set_sub_name(bfbmp_metadata_t* metadata, const char* sub_name)
 {
     BFBMP_CHECK(metadata);
     BFBMP_CHECK(sub_name);
-    return copy_string(metadata->sub_name, sub_name);
+    return copy_string(&metadata->sub_name, sub_name);
 }
 
 uint8_t bfbmp_metadata_set_author_name(bfbmp_metadata_t* metadata, const char* author_name)
 {
     BFBMP_CHECK(metadata);
     BFBMP_CHECK(author_name);
-    return copy_string(metadata->author_name, author_name);
+    return copy_string(&metadata->author_name, author_name);
 }
 
 uint8_t bfbmp_metadata_set_mapper_name(bfbmp_metadata_t* metadata, const char* mapper_name)
 {
     BFBMP_CHECK(metadata);
     BFBMP_CHECK(mapper_name);
-    return copy_string(metadata->mapper_name, mapper_name);
+    return copy_string(&metadata->mapper_name, mapper_name);
 }
