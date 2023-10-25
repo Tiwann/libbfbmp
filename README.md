@@ -1,5 +1,5 @@
 # libbfbmp
-libbfbmp is a C++ library that provides APIs for reading and writing Tiwann's bfbmp files (Binary Format Beatmap) which stores beatmap data for a *future* rhythm game.
+libbfbmp is a C library that provides APIs for reading and writing Tiwann's bfbmp files (Binary Format Beatmap) which stores beatmap data for a *future* rhythm game.
 
 # BFBMP File Format
 You can find below the file format specifications, so it is possible to write its own program that read/write bfbmp files. <br>
